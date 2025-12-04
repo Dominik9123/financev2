@@ -1,0 +1,207 @@
+.button-container {
+  display: flex;
+  justify-content: center; /* Wyśrodkowanie przycisków */
+  gap: 20px; /* Odstęp między przyciskami */
+  margin-top: 30px; /* Większa przerwa od pola wyboru waluty */
+}
+
+.confirm-button, .reset-button {
+  flex: none; /* Przyciski mają naturalne wymiary */
+  padding: 12px 20px;
+  font-size: 18px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  text-align: center;
+}
+
+.reset-button {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.reset-button:hover {
+    background-color: #2ecc71;
+}
+
+.confirm-button {
+  background-color: #3498db;
+  color: white;
+}
+
+.confirm-button:hover {
+  background-color: #9900ff;
+}
+
+.settings-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    height: 100vh;
+    padding: 20px;
+    padding-top: 60px;
+    
+    
+h2 {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+p {
+    font-size: 16px;
+    color: #555;
+    margin-bottom: 20px;
+}
+
+}
+
+.currency-select {
+    padding: 10px;
+    font-size: 16px;
+    border-radius: 5px;
+    margin-top: 10px;
+    border: 1px solid #ccc;
+    background-color: white;
+    cursor: pointer;
+    margin-bottom: 25px;
+}
+
+.currency-select:hover {
+    border-color: #222;
+}
+
+
+.confirmation-message {
+  color: green;
+  font-size: 16px;
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+.budget-section {
+  margin-top: 30px; /* Dodajemy większy odstęp od sekcji waluty */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.budget-input {
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 5px;
+  margin-top: 8px;
+  border: 1px solid #ccc;
+  width: 100%;
+  text-align: center;
+}
+
+.budget-button {
+  margin-top: 12px; 
+  padding: 12px 20px;
+  background-color: #222;
+  color: white;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.budget-button:hover {
+  background-color: #27ae60;
+}
+
+.budget-message {
+  color: green;
+  font-size: 16px;
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+
+.custom-category-section {
+  margin-top: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.category-input {
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 5px;
+  width: 100%;
+  border: 1px solid #ccc;
+  text-align: center;
+}
+
+.category-button {
+  margin-top: 20px;
+  margin-bottom: 35px;
+  padding: 12px 20px;
+  background-color: #f39c12;
+  color: white;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.category-button:hover {
+  background-color: #27ae60;
+}
+
+.category-item {
+  position: relative; 
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+  border: 2px solid #ffffff;
+  border-radius: 5px;
+  background-color: #222;
+  min-width: 150px;
+  max-width: fit-content;
+}
+
+.category-name {
+  flex-grow: 1; 
+  text-align: center;
+  font-weight: bold;
+  color: #fff;
+}
+
+
+.delete-button {
+  position: absolute;
+  right: -60px; 
+  background: none; 
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  color: red;
+  transition: transform 0.3s ease-in-out; /* Płynna animacja */
+}
+
+.delete-button:hover {
+  transform: scale(1.2); 
+}
+
+.settings-label {
+  font-weight: bold;
+  font-size: large;
+}
+
+.custom-category-section label {
+  margin-bottom: 10px; 
+}
+
+
+.reset-section {
+  margin-top: 40px; 
+}

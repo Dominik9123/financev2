@@ -1,0 +1,115 @@
+.history-container {
+  margin: 100px auto;
+  padding: 20px;
+  background-color: #222;
+  color: white;
+  border-radius: 10px;
+  text-align: center;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.history-container h1 {
+  padding-bottom: 35px;
+}
+
+.transaction-history-list {
+  list-style: none;
+  padding: 0;
+  width: 100%;
+  max-width: 600px;
+}
+
+.transaction-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 15px;
+  border-bottom: 1px solid #444;
+  font-size: 18px;
+}
+
+.transaction-item.income {
+  color: #27ae60; /* Zielony dla przychodów */
+}
+
+.transaction-item.expense {
+  color: #c0392b; /* Czerwony dla wydatków */
+}
+
+.transaction-amount {
+  font-weight: bold;
+}
+
+.transaction-date {
+  font-style: italic;
+  color: #bbb;
+}
+
+.transaction-type {
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.history-container {
+  padding: 20px;
+  color: white;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.filters label {
+  font-size: 16px;
+  font-weight: bold;
+  color: #FFA500;
+}
+
+.filters input, .filters select {
+  padding: 8px;
+  border: 2px solid #FFA500;
+  border-radius: 6px;
+  background-color: #222;
+  color: white;
+  font-size: 14px;
+}
+
+.transaction-history-list {
+  list-style: none;
+  padding: 0;
+}
+
+
+.transaction-item.income {
+  color: #4CAF50;
+}
+
+.transaction-item.expense {
+  color: #FF5733;
+}
+
+.transaction-category, .transaction-date {
+  font-size: 14px;
+}
+@media (max-width: 768px) {
+  .history-container {
+    width: 95%;
+    padding: 15px;
+  }
+
+  .transaction-item {
+    flex-direction: column;
+    align-items: center;
+    padding: 8px;
+  }
+
+  .filters {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
