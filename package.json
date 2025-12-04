@@ -1,5 +1,5 @@
 {
-  "homepage": "https://Dominik9123.github.io/finance-tracker/",
+  "homepage": "https://Dominik9123.github.io/financev2/",
   "name": "finance-tracker",
   "version": "1.0.0",
   "private": true,
@@ -60,5 +60,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "gh-pages": "^6.3.0"
   }
 }
