@@ -1,12 +1,20 @@
+/* Globalna animacja gradientu */
+@keyframes gradientAnimation {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+
 .button-container {
   display: flex;
-  justify-content: center; /* Wyśrodkowanie przycisków */
-  gap: 20px; /* Odstęp między przyciskami */
+  justify-content: center; 
+  gap: 20px; 
   margin-top: 30px; /* Większa przerwa od pola wyboru waluty */
 }
 
 .confirm-button, .reset-button {
-  flex: none; /* Przyciski mają naturalne wymiary */
+  flex: none; 
   padding: 12px 20px;
   font-size: 18px;
   border: none;
@@ -60,20 +68,48 @@ p {
 }
 
 .currency-select {
-    padding: 10px;
-    font-size: 16px;
-    border-radius: 5px;
-    margin-top: 10px;
-    border: 1px solid #ccc;
-    background-color: white;
-    cursor: pointer;
-    margin-bottom: 25px;
+   appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  background-color: #222;
+  color: #fff;
+
+  border: 2px solid #ffffff; 
+  border-radius: 8px;
+
+  padding: 10px 40px 10px 12px;
+  font-size: 1rem;
+  cursor: pointer;
+
+  width: 200px;
+
+  outline: none;
+  transition: 0.25s ease;
+
+  margin-bottom: 20px; 
+
+  
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg width='12' height='8' viewBox='0 0 12 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23ff6600' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
 }
 
 .currency-select:hover {
-    border-color: #222;
+  border-color: white;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.4)
 }
 
+/* Dropdown — opcje */
+.currency-select option {
+  background-color: #111 !important;
+  color: #fff !important;
+}
+
+.currency-select:focus {
+  border-color: #ffa200;
+  box-shadow: 0 0 10px rgba(255, 165, 0, 0.8);
+}
 
 .confirmation-message {
   color: green;
@@ -83,7 +119,7 @@ p {
 }
 
 .budget-section {
-  margin-top: 30px; /* Dodajemy większy odstęp od sekcji waluty */
+  margin-top: 30px; 
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -94,9 +130,11 @@ p {
   font-size: 16px;
   border-radius: 5px;
   margin-top: 8px;
-  border: 1px solid #ccc;
   width: 100%;
   text-align: center;
+
+  border-color: white;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.4)
 }
 
 .budget-button {
@@ -135,8 +173,9 @@ p {
   font-size: 16px;
   border-radius: 5px;
   width: 100%;
-  border: 1px solid #ccc;
   text-align: center;
+  border-color: white;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.4)
 }
 
 .category-button {
@@ -162,11 +201,14 @@ p {
   align-items: center;
   justify-content: space-between;
   padding: 8px;
-  border: 2px solid #ffffff;
   border-radius: 5px;
   background-color: #222;
   min-width: 150px;
   max-width: fit-content;
+  margin-bottom: 20px;
+
+  border-color: white;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.4)
 }
 
 .category-name {
@@ -193,8 +235,19 @@ p {
 }
 
 .settings-label {
-  font-weight: bold;
-  font-size: large;
+  font-family: 'Poppins', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+
+  background: linear-gradient(to right, orange, #ff6600);
+  background-size: 200%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientAnimation 3s infinite;
 }
 
 .custom-category-section label {
@@ -205,3 +258,4 @@ p {
 .reset-section {
   margin-top: 40px; 
 }
+
