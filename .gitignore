@@ -21,3 +21,11 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+*.db
+*.db-shm
+*.db-wal
+backend/obj/
+backend/bin/
+backend/obj/Debug/net9.0/backend.AssemblyInfoInputs.cache
+.gitignore
