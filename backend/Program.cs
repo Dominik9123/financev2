@@ -1,13 +1,15 @@
 using backend.Data;
 using backend.Models;
+using backend.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Dodanie DbContext i Identity
+// 1. Konfiguracja bazy danych SQLite
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite("Data Source=financev2.db"));
+
 
 builder.Services.AddIdentity<User, IdentityRole>(options =>
 {
@@ -18,10 +20,15 @@ builder.Services.AddIdentity<User, IdentityRole>(options =>
     options.Password.RequireNonAlphanumeric = false;
 })
 .AddEntityFrameworkStores<AppDbContext>()
-.AddDefaultTokenProviders();
+.AddDefaultTokenProviders(); // Niezbędne do generowania tokenów resetu hasła
 
-
+// 3. Rejestracja kontrolerów i usług
 builder.Services.AddControllers();
+
+// Rejestracja usługi wysyłania maili (Mailtrap)
+builder.Services.AddTransient<IEmailSender, EmailSender>();
+
+// 4. Konfiguracja CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReact", policy =>
@@ -31,6 +38,7 @@ builder.Services.AddCors(options =>
               .AllowCredentials());
 });
 
+// 5. Konfiguracja ciasteczek (Authentication Cookie)
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.Name = ".FinanceApp.Auth";
@@ -46,7 +54,9 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 var app = builder.Build();
 
+// 6. Middleware Pipeline
 app.UseCors("AllowReact");
+
 app.UseAuthentication();
 app.UseAuthorization();
 

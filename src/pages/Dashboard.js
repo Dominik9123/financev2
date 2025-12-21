@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Bar } from "react-chartjs-2";
+import { Bar, Line } from "react-chartjs-2";
 import ChartsRow from "../components/ChartsRow";
 import "../components/ChartsRow.scss";
 
@@ -176,16 +176,19 @@ const Dashboard = ({ user }) => {
   };
 
   // --- WYKRESY ---
-  const colors = ["#c26f02", "#0277c2"];
-  const visibleSalaries = salaries.slice(-5);
+  const visibleSalaries = salaries.slice(-10); 
   const chartData = {
     labels: visibleSalaries.length > 0 ? visibleSalaries.map(s => new Date(s.date).toLocaleDateString()) : ["No Data"],
     datasets: [{
-      label: `Income (${currency})`,
+      label: `Income History (${currency})`,
       data: visibleSalaries.length > 0 ? visibleSalaries.map(s => s.amount) : [0],
-      backgroundColor: visibleSalaries.map((_, index) => colors[index % colors.length]),
-      borderColor: "#a55b00",
-      borderWidth: 1,
+      borderColor: "#4caf50", 
+      backgroundColor: "rgba(76, 175, 80, 0.1)", // Delikatne wypełnienie pod linią
+      borderWidth: 3,
+      fill: true, 
+      tension: 0.4, // Zaokrąglenie linii
+      pointRadius: 4,
+      pointBackgroundColor: "#4caf50",
     }],
   };
 
@@ -201,30 +204,56 @@ const Dashboard = ({ user }) => {
     datasets: [{
       label: `Expenses (${currency})`,
       data: expenseAmounts,
-      backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4CAF50", "#9C27B0", "#FF9800", "#E91E63", "#3F51B5", "#00BCD4", "#8BC34A"],
-      borderColor: '#fff', 
-      borderWidth: 1,
+      backgroundColor: [
+      "rgba(194, 111, 2, 0.7)",  // Twój główny pomarańcz (ciemniejszy)
+      "rgba(76, 175, 80, 0.6)",  // Stonowana zieleń
+      "rgba(255, 82, 82, 0.6)",  // Koralowa czerwień
+      "rgba(52, 152, 219, 0.6)", // Niebieski (Steel Blue)
+      "rgba(155, 89, 182, 0.6)", // Fioletowy (Amethyst)
+      "rgba(243, 156, 18, 0.6)", // Złoty/Bursztynowy
+      "rgba(26, 188, 156, 0.6)", // Turkusowy
+      "rgba(127, 140, 141, 0.6)",// Szary (Asbestos)
+      "rgba(211, 84, 0, 0.6)",   // Ciemny pomarańcz (Pumpkin)
+      "rgba(44, 62, 80, 0.6)"    // Ciemny granat
+    ],
+    borderColor: 'rgba(255, 255, 255, 0.1)', 
+    borderWidth: 2,
     }],
   };
 
-  const barOptions = {
-    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-    plugins: {
-      legend: { position: 'top', labels: { color: '#ffffff' } },
-      title: { display: true, text: 'Expenses by Category', color: '#ffffff' },
+ const barOptions = {
+  indexAxis: 'y', 
+  responsive: true, 
+  maintainAspectRatio: false,
+  borderRadius: 10, // To doda zaokrąglenia na końcach słupków
+  borderSkipped: false, // Zaokrągli obie strony słupka
+  plugins: {
+    legend: { display: false }, // Ukrywamy legendę, bo mamy tytuł
+    title: { 
+      display: true, 
+      text: 'Monthly Expenses by Category', 
+      color: '#c26f02', // Twój pomarańczowy
+      font: { size: 16, weight: 'bold' } 
     },
-    scales: {
-      x: { ticks: { color: '#ffffff' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
-      y: { ticks: { color: '#ffffff' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } }
+  },
+  scales: {
+    x: { 
+      ticks: { color: '#888' }, 
+      grid: { color: 'rgba(255, 255, 255, 0.05)' } 
+    },
+    y: { 
+      ticks: { color: '#ffffff', font: { weight: 'bold' } }, 
+      grid: { display: false } 
     }
-  };
+  }
+};
 
   return (
     <div className="dashboard">
       <h1 className="outlined-text">Dashboard</h1>
       <form onSubmit={handleSubmit}>
         <label className="label-text">Salary Amount:</label>
-        <input type="number" value={salary} onChange={(e) => setSalary(e.target.value)} placeholder="Enter Amount:" required min="0" />
+        <input type="number"  value={salary} onChange={(e) => setSalary(e.target.value)} placeholder="Enter Amount:" required min="0" />
         <label className="label-text">Date:</label>
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
         <button type="submit" className="button-payout">Add Payout</button>
@@ -237,7 +266,22 @@ const Dashboard = ({ user }) => {
           </p>
         </div>
       </div>
-      <div className="chart-container" style={{height: '300px'}}><Bar data={chartData} options={{ responsive: true, maintainAspectRatio: false }} /></div>
+      <div className="chart-container" style={{height: '300px'}}>
+  <Line 
+    data={chartData} 
+    options={{ 
+      responsive: true, 
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#ffffff' } }
+      },
+      scales: {
+        x: { ticks: { color: '#888' }, grid: { display: false } },
+        y: { ticks: { color: '#888' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }
+      }
+    }}
+  />
+</div>
       <ChartsRow salaries={salaries} expenseList={expenseList} currency={currency} />
       
       <h2 className="outlined-text expense-title">Add Expense</h2>

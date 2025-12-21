@@ -235,9 +235,10 @@ input[type="number"]::-webkit-outer-spin-button {
   }
   
   .expense-tile {
-  background: #444;
+  background: rgba(255, 255, 255, 0.03);
   color: white;
   padding: 25px;
+
   border-radius: 15px;
   text-align: center;
   display: flex;

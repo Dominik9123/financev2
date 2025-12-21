@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
-import "./Settings.css";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import "./Settings.scss";
 
 const currencyOptions = ["USD ($)", "EUR (€)", "PLN (zł)", "GBP (£)", "JPY (¥)"];
 
 const Settings = ({ user }) => {
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [currency, setCurrency] = useState("USD ($)");
   const [selectedCurrency, setSelectedCurrency] = useState("USD ($)");
   const [confirmationMessage, setConfirmationMessage] = useState("");
@@ -14,6 +17,12 @@ const Settings = ({ user }) => {
 
   const [customCategories, setCustomCategories] = useState([]);
   const [newCategory, setNewCategory] = useState("");
+
+  const toastConfig = {
+    position: "top-right",
+    autoClose: 3000,
+    theme: "dark",
+  };
 
   // --- LOGIKA POBIERANIA KATEGORII (HYBRYDOWA) ---
   const fetchCategories = useCallback(async () => {
@@ -54,25 +63,28 @@ const Settings = ({ user }) => {
     setSelectedCurrency(event.target.value);
   };
 
-  const handleConfirmCurrency = () => {
+    const handleConfirmCurrency = () => {
     setCurrency(selectedCurrency);
     localStorage.setItem("currency", selectedCurrency);
-    setConfirmationMessage(`Currency changed to ${selectedCurrency}! ✅`);
+    toast.success(`Currency changed to ${selectedCurrency}! 💰`, toastConfig);
   };
 
   const handleBudgetChange = (event) => {
     setAnnualBudget(Number(event.target.value));
   };
 
-  const handleConfirmBudget = () => {
+    const handleConfirmBudget = () => {
     localStorage.setItem("annualBudget", annualBudget);
     setSavedBudget(annualBudget);
-    setBudgetMessage(`Annual budget set to: ${currency} ${annualBudget} ✅`);
+    toast.info(`Annual budget updated to ${currency} ${annualBudget} ✅`, toastConfig);
   };
 
   // --- DODAWANIE KATEGORII (HYBRYDOWE) ---
-  const handleAddCategory = async () => {
-    if (newCategory.trim() === "") return;
+ const handleAddCategory = async () => {
+    if (newCategory.trim() === "") {
+        toast.warning("Category name cannot be empty! ⚠️", toastConfig);
+        return;
+    }
 
     if (user) {
       try {
@@ -82,13 +94,14 @@ const Settings = ({ user }) => {
           body: JSON.stringify({ name: newCategory }), // Wysyłamy DTO
           credentials: "include",
         });
-        if (response.ok) {
+       if (response.ok) {
           setNewCategory("");
           fetchCategories();
+          toast.success("New category added to cloud! ☁️", toastConfig);
           return;
         }
       } catch (error) {
-        console.error("Błąd zapisu kategorii na serwerze:", error);
+        toast.error("Failed to save category to server.", toastConfig);
       }
     }
 
@@ -97,6 +110,7 @@ const Settings = ({ user }) => {
     localStorage.setItem("customCategories", JSON.stringify(updatedCategories));
     setCustomCategories(updatedCategories);
     setNewCategory("");
+    toast.success("Category saved locally! 💾", toastConfig);
   };
 
   // --- USUWANIE KATEGORII (HYBRYDOWE) ---
@@ -109,6 +123,7 @@ const Settings = ({ user }) => {
         });
         if (response.ok) {
           fetchCategories();
+          toast.error("Category deleted from server!", toastConfig);
           return;
         }
       } catch (error) {
@@ -120,6 +135,7 @@ const Settings = ({ user }) => {
     const updatedCategories = customCategories.filter((c) => c.name !== categoryObj.name);
     localStorage.setItem("customCategories", JSON.stringify(updatedCategories));
     setCustomCategories(updatedCategories);
+    toast.error("Category removed! ❌", toastConfig);
   };
 
   // --- RESETOWANIE DANYCH ---
@@ -136,7 +152,7 @@ const Settings = ({ user }) => {
         if (!response.ok) throw new Error("Failed to reset data on server");
       } catch (error) {
         console.error("Server reset error:", error);
-        alert("Could not reset server data. Check your connection.");
+        toast.error("Server reset error. Connection failed.", toastConfig);
         return;
       }
     }
@@ -144,12 +160,36 @@ const Settings = ({ user }) => {
     localStorage.removeItem("salaries");
     localStorage.removeItem("expenses");
     
-    alert("Transaction data has been reset! 🔄");
-    window.location.reload(); 
+        toast.success("All data has been wiped! 🔄", {
+        ...toastConfig,
+        onClose: () => window.location.reload() // Przeładuj po zamknięciu toasta
+    });
   };
+
+const executeReset = async () => {
+  if (user) {
+    try {
+      await fetch("http://localhost:5109/api/transaction/reset", {
+        method: "DELETE",
+        credentials: "include"
+      });
+    } catch (error) {
+      toast.error("Server reset error.", toastConfig);
+      return;
+    }
+  }
+  localStorage.removeItem("salaries");
+  localStorage.removeItem("expenses");
+  
+  toast.success("Data wiped! Reloading...", {
+    ...toastConfig,
+    onClose: () => window.location.reload()
+  });
+};
 
   return (
     <div className="settings-container">
+      <ToastContainer />
       <h2>Settings</h2>
       <p>Customize your experience and preferences</p>
 
@@ -199,10 +239,29 @@ const Settings = ({ user }) => {
       </div>
 
       <div className="reset-section">
-        <button className="reset-button" onClick={handleResetData}>
+        <button className="reset-button" onClick={() => setIsResetModalOpen(true)}>
           {user ? "Reset Account Data 🔄" : "Reset Local Data 🔄"}
         </button>
       </div>
+      {isResetModalOpen && (
+  <div className="modal-overlay">
+    <div className="modal-content">
+      <h3>Confirm Reset ⚠️</h3>
+      <p>Are you sure? This will delete all your transactions. This action cannot be undone!</p>
+      <div className="modal-footer">
+        <button className="btn-cancel" onClick={() => setIsResetModalOpen(false)}>
+          Cancel
+        </button>
+        <button className="btn-confirm-danger" onClick={() => {
+          executeReset();
+          setIsResetModalOpen(false);
+        }}>
+          Yes, Delete Everything
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };

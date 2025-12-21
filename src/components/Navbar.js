@@ -1,38 +1,52 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";  
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { IoSettingsOutline } from "react-icons/io5";
 import { MdOutlineCompareArrows, MdSpaceDashboard } from "react-icons/md";
 import { FiLogIn, FiLogOut } from "react-icons/fi";
 import LoginModal from "./LoginModal";
 import ResetPasswordModal from "./ResetPasswordModal"; 
+import { toast } from "react-toastify";
 import "./Navbar.css";
 
-const Navbar = ({ user, setUser }) => {
+const Navbar = ({ user, setUser, initialResetData, onCloseReset }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showReset, setShowReset] = useState(false);
+  const navigate = useNavigate();
+
+  // AUTOMATYCZNE OTWIERANIE: Jeśli w App.js wykryto dane resetu, otwórz modal
+  useEffect(() => {
+    if (initialResetData) {
+      setShowLoginModal(true);
+    }
+  }, [initialResetData]);
 
   const handleLogout = async () => {
     try {
-      // 1. Serwer usuwa ciasteczko sesji
-      await fetch("http://localhost:5109/api/auth/logout", { 
+      const response = await fetch("http://localhost:5109/api/auth/logout", { 
         method: "POST", 
         credentials: "include"
       });
 
-
-      localStorage.clear();
-
-      // 3. Reset stanu w React
-      setUser(null);
-
-
-      window.location.href = "/financev2/";
+      if (response.ok) {
+        localStorage.clear();
+        setUser(null);
+        toast.info("Logged out successfully. See you soon!");
+        navigate("/");
+      } else {
+        toast.error("Logout failed on server.");
+      }
     } catch (error) {
       console.error("Błąd podczas wylogowywania:", error);
+      toast.error("Connection error during logout.");
       localStorage.clear();
-      window.location.reload();
+      setUser(null);
     }
+  };
+
+  const handleCloseLoginModal = () => {
+    setShowLoginModal(false);
+    if (onCloseReset) onCloseReset(); // Funkcja z App.js czyszcząca URL
   };
 
   return (
@@ -78,7 +92,7 @@ const Navbar = ({ user, setUser }) => {
             <span>Login</span>
           </li>
         ) : (
-          <li onClick={handleLogout}>
+          <li onClick={() => { handleLogout(); setIsOpen(false); }}>
             <span className="icon-wrapper"><FiLogOut size={24} /></span>
             <span>Logout</span>
           </li>
@@ -87,8 +101,9 @@ const Navbar = ({ user, setUser }) => {
 
       {showLoginModal && (
         <LoginModal 
-          onClose={() => setShowLoginModal(false)} 
+          onClose={handleCloseLoginModal} 
           setUser={setUser}
+          initialResetData={initialResetData}
           onReset={() => { setShowLoginModal(false); setShowReset(true); }}
         />
       )}
