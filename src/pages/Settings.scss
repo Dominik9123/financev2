@@ -6,66 +6,97 @@
 }
 
 
-.button-container {
-  display: flex;
-  justify-content: center; 
-  gap: 20px; 
-  margin-top: 30px; /* Większa przerwa od pola wyboru waluty */
-}
-
-.confirm-button, .reset-button {
-  flex: none; 
-  padding: 12px 20px;
-  font-size: 18px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-  text-align: center;
-}
-
-.reset-button {
-  background-color: #e74c3c;
-  color: white;
-}
-
-.reset-button:hover {
-    background-color: #2ecc71;
-}
-
-.confirm-button {
-  background-color: #3498db;
-  color: white;
-}
-
-.confirm-button:hover {
-  background-color: #9900ff;
-}
 
 .settings-container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     text-align: center;
-    height: 100vh;
+    height: 110vh;
     padding: 20px;
-    padding-top: 60px;
+    padding-top: 90px;
+    background-color: #121212;
+    color: #fff;
     
     
 h2 {
-    font-size: 24px;
+    font-size: 28px;
     font-weight: bold;
     margin-bottom: 10px;
 }
 
 p {
     font-size: 16px;
-    color: #555;
+    color: #888;
     margin-bottom: 20px;
 }
-
 }
+
+.confirm-button, 
+.budget-button, 
+.category-button, 
+.export-button, 
+.reset-button {
+  margin-top: 15px;
+  padding: 12px 25px;
+  background-color: #222; /* Ciemne tło jak w budget-button */
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  border: 1px solid #ffffff; /* Biała ramka */
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  width: fit-content;
+  min-width: 180px;
+
+  &:hover {
+    background-color: #27ae60; /* Zielony hover jak w budget-button */
+    border-color: #27ae60;
+    box-shadow: 0 0 10px rgba(39, 174, 96, 0.5);
+    transform: translateY(-2px);
+  }
+}
+
+.export-button {
+  margin-top: 15px;
+  padding: 12px 25px;
+  background-color: #222; 
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  border: 1px solid #ffffff; 
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  width: fit-content;
+  min-width: 180px;
+
+  &:hover {
+    background-color: #27ae60; 
+    border-color: #27ae60;
+    box-shadow: 0 0 10px rgba(39, 174, 96, 0.5);
+    transform: translateY(-2px);
+  }
+}
+
+.reset-button:hover {
+  background-color: #ff5252;
+  border-color: black;
+  box-shadow: none;
+}
+
+.button-container {
+  display: flex;
+  justify-content: center; 
+  gap: 20px; 
+  margin-top: 30px; 
+}
+
+
 
 .currency-select {
    appearance: none;
@@ -137,21 +168,8 @@ p {
   box-shadow: 0 0 6px rgba(255, 255, 255, 0.4)
 }
 
-.budget-button {
-  margin-top: 12px; 
-  padding: 12px 20px;
-  background-color: #222;
-  color: white;
-  font-size: 16px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
 
-.budget-button:hover {
-  background-color: #27ae60;
-}
+
 
 .budget-message {
   color: green;
@@ -178,22 +196,7 @@ p {
   box-shadow: 0 0 6px rgba(255, 255, 255, 0.4)
 }
 
-.category-button {
-  margin-top: 20px;
-  margin-bottom: 35px;
-  padding: 12px 20px;
-  background-color: #f39c12;
-  color: white;
-  font-size: 16px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
 
-.category-button:hover {
-  background-color: #27ae60;
-}
 
 .category-item {
   position: relative; 

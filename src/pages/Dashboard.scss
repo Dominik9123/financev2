@@ -205,19 +205,19 @@ input[type="number"]::-webkit-outer-spin-button {
   
   .expense-item {
     display: flex;
-    justify-content: space-between; /* Rozdziela kwotę, kategorię i datę */
+    justify-content: space-between; 
     padding: 5px 10px;
-    border-bottom: 1px solid #444; /* Oddzielenie wpisów */
+    border-bottom: 1px solid #444; 
   }
   
   .expense-amount {
     font-weight: bold;
-    color: #c0392b; /* Czerwony dla wydatków */
+    color: #c0392b; 
   }
   
   .expense-category {
     font-weight: bold;
-    color: #3498db; /* Niebieski dla kategorii */
+    color: #3498db; 
   }
   
   .expense-date {

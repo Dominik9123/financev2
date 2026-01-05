@@ -205,16 +205,16 @@ const Dashboard = ({ user }) => {
       label: `Expenses (${currency})`,
       data: expenseAmounts,
       backgroundColor: [
-      "rgba(194, 111, 2, 0.7)",  // Twój główny pomarańcz (ciemniejszy)
-      "rgba(76, 175, 80, 0.6)",  // Stonowana zieleń
-      "rgba(255, 82, 82, 0.6)",  // Koralowa czerwień
-      "rgba(52, 152, 219, 0.6)", // Niebieski (Steel Blue)
-      "rgba(155, 89, 182, 0.6)", // Fioletowy (Amethyst)
-      "rgba(243, 156, 18, 0.6)", // Złoty/Bursztynowy
-      "rgba(26, 188, 156, 0.6)", // Turkusowy
-      "rgba(127, 140, 141, 0.6)",// Szary (Asbestos)
-      "rgba(211, 84, 0, 0.6)",   // Ciemny pomarańcz (Pumpkin)
-      "rgba(44, 62, 80, 0.6)"    // Ciemny granat
+      "rgba(194, 111, 2, 0.7)",  
+      "rgba(76, 175, 80, 0.6)",  
+      "rgba(255, 82, 82, 0.6)",  
+      "rgba(52, 152, 219, 0.6)", 
+      "rgba(155, 89, 182, 0.6)", 
+      "rgba(243, 156, 18, 0.6)", 
+      "rgba(26, 188, 156, 0.6)", 
+      "rgba(127, 140, 141, 0.6)",
+      "rgba(211, 84, 0, 0.6)",   
+      "rgba(44, 62, 80, 0.6)"    
     ],
     borderColor: 'rgba(255, 255, 255, 0.1)', 
     borderWidth: 2,
@@ -225,14 +225,14 @@ const Dashboard = ({ user }) => {
   indexAxis: 'y', 
   responsive: true, 
   maintainAspectRatio: false,
-  borderRadius: 10, // To doda zaokrąglenia na końcach słupków
-  borderSkipped: false, // Zaokrągli obie strony słupka
+  borderRadius: 10, 
+  borderSkipped: false, 
   plugins: {
-    legend: { display: false }, // Ukrywamy legendę, bo mamy tytuł
+    legend: { display: false },
     title: { 
       display: true, 
       text: 'Monthly Expenses by Category', 
-      color: '#c26f02', // Twój pomarańczowy
+      color: '#c26f02', 
       font: { size: 16, weight: 'bold' } 
     },
   },

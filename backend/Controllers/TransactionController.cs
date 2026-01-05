@@ -28,6 +28,42 @@ public class TransactionController : ControllerBase
         return Ok(transactions);
     }
 
+
+    [HttpGet("export")]
+    public async Task<IActionResult> ExportToCsv()
+    {
+        //Pobieranie ID zalogowanego użytkownika z Claimow
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        //Pobieranie tylko transakcji należących do zalogowanego użytkownika
+        var transactions = await _context.Transactions
+        .Where(t => t.UserId == userId)
+        .OrderByDescending(t => t.Date)
+        .ToListAsync();
+
+        //Budowanie zawartosci dla Pliku CSV
+        var csvBuilder = new System.Text.StringBuilder();
+        // Zmieniono na średniki, żeby nagłówek pasował do wierszy poniżej
+        csvBuilder.AppendLine("Date;Title;Amount;Category;Type");
+
+        foreach (var t in transactions)
+        {
+            //Formatowanie daty do czytelnego formatu oraz ze tekst nie ma srednikow
+            var row = $"{t.Date:yyyy-MM-dd};{t.Title.Replace(";", " ")};{t.Amount};{t.Category};{t.Type}";
+            csvBuilder.AppendLine(row);
+        }
+
+        // Kodowanie UTF-8 z BOM zeby polskie znaki dzialaly
+        var encoding = System.Text.Encoding.UTF8;
+        var preamble = encoding.GetPreamble();
+        var content = encoding.GetBytes(csvBuilder.ToString());
+        var fileContent = preamble.Concat(content).ToArray();
+
+        //Zwracanie Pliku do Pobrania
+        return File(fileContent, "text/csv", $"Eksport_{DateTime.Now:yyyyMMdd}.csv");
+    }
+
     [HttpPost]
     public async Task<IActionResult> AddTransaction([FromBody] TransactionDto dto)
     {

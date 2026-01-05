@@ -45,7 +45,7 @@ export default function ResetPasswordModal({ onClose, onBackToLogin }) {
             placeholder="E-mail"
             className="login-modal-input"
             value={email}
-            onChange={(e) => setEmail(e.target.value)} // To aktualizuje stan
+            onChange={(e) => setEmail(e.target.value)} 
             required
           />
 
