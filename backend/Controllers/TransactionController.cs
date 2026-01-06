@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using backend.Data;
 using backend.Models;
+using backend.Services;
 using System.Security.Claims;
 
 [ApiController]
@@ -12,9 +13,12 @@ public class TransactionController : ControllerBase
 {
     private readonly AppDbContext _context;
 
-    public TransactionController(AppDbContext context)
+    private readonly CurrencyService _currencyService;
+
+    public TransactionController(AppDbContext context, CurrencyService currencyService)
     {
         _context = context;
+        _currencyService = currencyService;
     }
 
     [HttpGet]
@@ -75,6 +79,7 @@ public class TransactionController : ControllerBase
             UserId = userId,
             Title = string.IsNullOrEmpty(dto.Title) ? "New Transaction" : dto.Title,
             Amount = dto.Amount,
+            Currency = dto.Currency,
             Category = dto.Category,
             Type = dto.Type,
             Date = dto.Date == default ? DateTime.UtcNow : dto.Date
@@ -96,6 +101,7 @@ public class TransactionController : ControllerBase
 
         transaction.Title = updated.Title;
         transaction.Amount = updated.Amount;
+        transaction.Currency = updated.Currency;
         transaction.Category = updated.Category;
         transaction.Type = updated.Type;
         transaction.Date = updated.Date;
@@ -121,7 +127,7 @@ public class TransactionController : ControllerBase
     [HttpDelete("reset")]
     public async Task<IActionResult> ResetMyData()
     {
-        // Wyciągamy ID zalogowanego użytkownika
+        // Wyciąganie ID zalogowanego użytkownika
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         if (string.IsNullOrEmpty(userId))
@@ -129,14 +135,42 @@ public class TransactionController : ControllerBase
             return Unauthorized();
         }
 
-        // Pobieramy wszystkie transakcje należące tylko do tego użytkownika
+        // Pobieranie wszystkich transakcji użytkownika
         var userTransactions = _context.Transactions.Where(t => t.UserId == userId);
 
-        // Usuwamy je zbiorczo
+        // Usuwanie wszystkich transakcji użytkownika
         _context.Transactions.RemoveRange(userTransactions);
         await _context.SaveChangesAsync();
 
         return Ok(new { message = "Data reset successfully" });
+    }
+
+    [HttpGet("summary")]
+    public async Task<IActionResult> GetSummary([FromQuery] string targetCurrency = "USD")
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var transactions = await _context.Transactions
+            .Where(t => t.UserId == userId)
+            .ToListAsync();
+
+        // Obliczanie sum przychodów i wydatków z konwersją walut
+        decimal totalIncome = transactions
+            .Where(t => t.Type == "Income")
+            .Sum(t => _currencyService.Convert(t.Amount, t.Currency, targetCurrency));
+
+        decimal totalExpense = transactions
+            .Where(t => t.Type == "Expense")
+            .Sum(t => _currencyService.Convert(t.Amount, t.Currency, targetCurrency));
+
+        return Ok(new
+        {
+            TotalIncome = totalIncome,
+            TotalExpense = totalExpense,
+            Balance = totalIncome - totalExpense,
+            Currency = targetCurrency
+        });
     }
 }
 
@@ -144,6 +178,7 @@ public class TransactionDto
 {
     public string Title { get; set; } = string.Empty;
     public decimal Amount { get; set; }
+    public string Currency { get; set; } = "USD";
     public string Category { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
     public DateTime Date { get; set; }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Line } from "react-chartjs-2";
 import "./ChartsRow.scss";
 import { 
@@ -10,8 +10,7 @@ import {
   FaCalendarAlt
 } from "react-icons/fa";
 
-const ChartsRow = ({ salaries, expenseList, currency }) => {
-  // Stan dla wybranego miesiąca (tylko dla sekcji miesięcznej)
+const ChartsRow = ({ salaries, expenseList, currency, totalIncome, totalExpense }) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
@@ -20,7 +19,19 @@ const ChartsRow = ({ salaries, expenseList, currency }) => {
     "July", "August", "September", "October", "November", "December"
   ];
 
-  // 1. Filtrowanie danych TYLKO dla kafelków miesięcznych
+  // --- LOGIKA PRZELICZANIA KURSÓW ---
+  // Obliczamy kursy na podstawie danych przesłanych z Dashboardu
+  const incomeRate = useMemo(() => {
+    const rawIncome = salaries.reduce((sum, s) => sum + s.amount, 0);
+    return rawIncome > 0 ? totalIncome / rawIncome : 1;
+  }, [salaries, totalIncome]);
+
+  const expenseRate = useMemo(() => {
+    const rawExpense = expenseList.reduce((sum, e) => sum + e.amount, 0);
+    return rawExpense > 0 ? totalExpense / rawExpense : 1;
+  }, [expenseList, totalExpense]);
+
+  // Filtrowanie miesięczne z uwzględnieniem przelicznika
   const filteredIncomes = salaries.filter(s => {
     const d = new Date(s.date);
     return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
@@ -31,28 +42,25 @@ const ChartsRow = ({ salaries, expenseList, currency }) => {
     return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
   });
 
-  // 2. Ostatnie 5 transakcji (zawsze ogólne, niezależnie od wybranego miesiąca)
   const recentTransactions = [
-    ...salaries.map(s => ({ ...s, type: 'income' })),
-    ...expenseList.map(e => ({ ...e, type: 'expense' }))
+    ...salaries.map(s => ({ ...s, type: 'income', rate: incomeRate })),
+    ...expenseList.map(e => ({ ...e, type: 'expense', rate: expenseRate }))
   ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
 
   return (
     <div className="charts-row-container">
-      
-      {/* GÓRNY RZĄD: OGÓLNE PODSUMOWANIE (TRENDY) */}
       <div className="charts-row">
         {/* TOTAL INCOME BOX */}
         <div className="chart-box">
           <h3><FaMoneyBillWave style={{color: "#c26f02"}} /> Total Income</h3>
           <p className="amount income-amount">
-            {currency} {salaries.reduce((sum, s) => sum + s.amount, 0).toFixed(2)}
+            {currency.split(' ')[1] || currency.split(' ')[0]} {totalIncome.toFixed(2)}
           </p>
           <Line
             data={{
               labels: salaries.map(s => s.date),
               datasets: [{
-                data: salaries.map(s => s.amount),
+                data: salaries.map(s => s.amount * incomeRate),
                 borderColor: "#ffa600",
                 borderWidth: 2,
                 fill: false,
@@ -72,13 +80,13 @@ const ChartsRow = ({ salaries, expenseList, currency }) => {
         <div className="chart-box">
           <h3><FaShoppingCart style={{color: "#c26f02"}} /> Total Spendings</h3>
           <p className="amount spending-amount">
-            {currency} {expenseList.reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
+            {currency.split(' ')[1] || currency.split(' ')[0]} {totalExpense.toFixed(2)}
           </p>
           <Line
             data={{
               labels: expenseList.map(e => e.date),
               datasets: [{
-                data: expenseList.map(e => e.amount),
+                data: expenseList.map(e => e.amount * expenseRate),
                 borderColor: "#ff4d6d",
                 borderWidth: 2,
                 fill: false,
@@ -95,7 +103,6 @@ const ChartsRow = ({ salaries, expenseList, currency }) => {
         </div>
       </div>
 
-      {/* SEKCJA WYBORU MIESIĄCA (tylko dla dołu) */}
       <div className="month-selector-container">
           <div className="month-selector-box">
             <FaCalendarAlt className="calendar-icon" />
@@ -112,25 +119,22 @@ const ChartsRow = ({ salaries, expenseList, currency }) => {
           </div>
       </div>
 
-      {/* DOLNY RZĄD: MIESIĘCZNE PODSUMOWANIE (ZALEŻNE OD SELEKTORA) */}
       <div className="dashboard-details-row">
-        
         <div className="monthly-summary-column">
           <div className="mini-card income-accent">
             <span className="label">Income ({months[selectedMonth]})</span>
             <h4 className="value">
-              {currency} {filteredIncomes.reduce((sum, s) => sum + s.amount, 0).toFixed(2)}
+              {currency.split(' ')[1] || currency.split(' ')[0]} {(filteredIncomes.reduce((sum, s) => sum + s.amount, 0) * incomeRate).toFixed(2)}
             </h4>
           </div>
           <div className="mini-card expense-accent">
             <span className="label">Spendings ({months[selectedMonth]})</span>
             <h4 className="value">
-              {currency} {filteredExpenses.reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
+              {currency.split(' ')[1] || currency.split(' ')[0]} {(filteredExpenses.reduce((sum, e) => sum + e.amount, 0) * expenseRate).toFixed(2)}
             </h4>
           </div>
         </div>
 
-        {/* LISTA OSTATNICH TRANSAKCJI */}
         <div className="recent-transactions-box">
           <h3 className="section-title"><FaHistory /> Recent Activity</h3>
           <div className="transaction-mini-list">
@@ -145,7 +149,7 @@ const ChartsRow = ({ salaries, expenseList, currency }) => {
                     <p className="t-date">{new Date(t.date).toLocaleDateString()}</p>
                   </div>
                   <p className={`t-amount-val ${t.type}`}>
-                    {t.type === 'income' ? '+' : '-'} {t.amount.toFixed(2)} {currency}
+                    {t.type === 'income' ? '+' : '-'} {(t.amount * t.rate).toFixed(2)} {currency.split(' ')[1] || currency.split(' ')[0]}
                   </p>
                 </div>
               ))
@@ -154,7 +158,6 @@ const ChartsRow = ({ salaries, expenseList, currency }) => {
             )}
           </div>
         </div>
-
       </div>
     </div>
   );
