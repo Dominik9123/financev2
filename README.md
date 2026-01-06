@@ -1,12 +1,16 @@
 # 💰 Personal Finance Tracker v2.0
 
-[English Version](#english-version-en) | [Wersja Polska](#wersja-polska-pl)
+[English Version](#english-version-en) | [Wersja Polska](#wersja-polska-pl) | [🌐 Live Demo](https://dominik9123.github.io/financev2/)
 
 ---
 
 ## Wersja Polska (PL)
 
 Aplikacja typu Full-Stack do zarządzania finansami osobistymi z **automatycznym przeliczaniem walut** w czasie rzeczywistym dzięki integracji z API NBP.
+
+### 🌐 Demo Online
+Przetestuj aplikację tutaj: [dominik9123.github.io/financev2/](https://dominik9123.github.io/financev2/)
+> **Uwaga**: Wersja demonstracyjna GitHub Pages wspiera wyłącznie **Tryb Gościa** (dane zapisywane lokalnie w przeglądarce). Funkcje konta użytkownika i trwałej bazy danych wymagają uruchomienia backendu lokalnie.
 
 ### 🚀 Kluczowe Funkcje
 * **Wsparcie Wielu Walut**: Automatyczne pobieranie kursów (USD, EUR, PLN) z Narodowego Banku Polskiego.
@@ -34,6 +38,10 @@ Aplikacja typu Full-Stack do zarządzania finansami osobistymi z **automatycznym
 
 A modern full-stack application for managing personal finances with **real-time currency conversion** integrated with the NBP API.
 
+### 🌐 Live Demo
+Check out the live version: [dominik9123.github.io/financev2/](https://dominik9123.github.io/financev2/)
+> **Note**: The GitHub Pages demo supports **Guest Mode only** (LocalStorage). Features like user accounts and a persistent SQL database require running the backend locally.
+
 ### 🚀 Key Features
 * **Multi-Currency Support**: Automatically fetch exchange rates (USD, EUR, PLN) from the National Bank of Poland.
 * **Dual Mode**: Use the app as a **Logged-in User** (SQLite DB) or as a **Guest** (Local Storage).
@@ -44,7 +52,6 @@ A modern full-stack application for managing personal finances with **real-time 
 ### 🛠 Tech Stack
 * **Backend**: .NET 9 Web API, SQLite (EF Core), ASP.NET Core Identity.
 * **Frontend**: React.js, SCSS, Chart.js, React Icons.
-* **Services**: Background currency fetching service.
 
 ### 📦 Installation
 1. **Backend**:
@@ -53,16 +60,3 @@ A modern full-stack application for managing personal finances with **real-time 
    - Navigate to `frontend`, run `npm install` and `npm start`.
 
 ---
-
-## 👨‍💻 Author
-**Skute** - *Finance Tracker Main Project*
-
-
-
-
-
-
-
-
-
-https://dominik9123.github.io/financev2/
