@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Bar, Line } from "react-chartjs-2";
 import ChartsRow from "../components/ChartsRow";
 import "../components/ChartsRow.scss";
+import { convertCurrency } from "../utils/convertCurrency";
+import { fetchCurrencyRates } from "../services/currencyService";
 
 import {
   Chart as ChartJS,
@@ -45,52 +47,36 @@ const Dashboard = ({ user }) => {
   const [salary, setSalary] = useState("");
   const [date, setDate] = useState("");
   const [salaries, setSalaries] = useState([]);
-  const [totalBalance, setTotalBalance] = useState(0);
   const [currency, setCurrency] = useState("USD ($)");
   const [expenses, setExpenses] = useState({});
   const [expenseList, setExpenseList] = useState([]);
   const [customCategories, setCustomCategories] = useState([]);
   
   // Stan dla podsumowania z API (zalogowany) i kursów NBP (gość)
-  const [summary, setSummary] = useState({ totalIncome: 0, totalExpense: 0, balance: 0 });
-  const [localRates, setLocalRates] = useState({ USD: 1, EUR: 1, PLN: 1 });
+  const [localRates, setLocalRates] = useState({ PLN: 1 });
+  const [ratesLoading, setRatesLoading] = useState(true);
+  const [ratesError, setRatesError] = useState("");
 
   const getCurrencyCode = () => {
     return (localStorage.getItem("currency") || "USD ($)").split(" ")[0];
   };
 
-  // --- POBIERANIE KURSÓW DLA TRYBU GOŚCIA ---
-  const fetchNBPRates = useCallback(async () => {
-    try {
-      const response = await fetch("https://api.nbp.pl/api/exchangerates/tables/A/?format=json");
-      const data = await response.json();
-      const rates = data[0].rates;
-      const usd = rates.find(r => r.code === "USD")?.mid || 1;
-      const eur = rates.find(r => r.code === "EUR")?.mid || 1;
-      setLocalRates({ USD: usd, EUR: eur, PLN: 1 });
-    } catch (error) {
-      console.error("Błąd pobierania kursów NBP:", error);
-    }
-  }, []);
+  // --- POBIERANIE KURSÓW  ---
+const fetchNBPRates = useCallback(async () => {
+  setRatesLoading(true);
+  setRatesError("");
 
-  const fetchSummary = useCallback(async () => {
-    if (user) {
-      try {
-        const currencyCode = getCurrencyCode();
-        const response = await fetch(`http://localhost:5109/api/transaction/summary?targetCurrency=${currencyCode}`, {
-          method: "GET",
-          credentials: "include",
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setSummary(data);
-          setTotalBalance(data.balance);
-        }
-      } catch (error) {
-        console.error("Błąd API summary:", error);
-      }
-    }
-  }, [user]);
+  try {
+    const newRates = await fetchCurrencyRates();
+    setLocalRates(newRates);
+  } catch (error) {
+    console.error("Błąd pobierania kursów NBP:", error);
+    setRatesError("Nie udało się pobrać kursów walut.");
+  } finally {
+    setRatesLoading(false);
+  }
+}, []);
+
 
   const fetchTransactions = useCallback(async () => {
     if (user) {
@@ -103,7 +89,6 @@ const Dashboard = ({ user }) => {
           const data = await response.json();
           setSalaries(data.filter(t => t.type === "Income"));
           setExpenseList(data.filter(t => t.type === "Expense"));
-          fetchSummary(); 
           return;
         }
       } catch (error) {
@@ -116,8 +101,7 @@ const Dashboard = ({ user }) => {
     const savedExpenses = JSON.parse(localStorage.getItem("expenses") || "[]").map(t => ({...t, currency: t.currency || "USD"}));
     setSalaries(savedSalaries);
     setExpenseList(savedExpenses);
-    fetchNBPRates();
-  }, [user, fetchSummary, fetchNBPRates]);
+}, [user]);
 
   const fetchCategories = useCallback(async () => {
     if (user) {
@@ -137,54 +121,73 @@ const Dashboard = ({ user }) => {
     setCustomCategories(saved);
   }, [user]);
 
-  useEffect(() => {
-    const savedCurrency = localStorage.getItem("currency") || "USD ($)";
-    setCurrency(savedCurrency);
-    fetchTransactions();
-    fetchCategories();
-  }, [user, fetchTransactions, fetchCategories]);
+   useEffect(() => {
+    fetchNBPRates();
+  }, [fetchNBPRates]);
+
+useEffect(() => {
+  const savedCurrency = localStorage.getItem("currency") || "USD ($)";
+  setCurrency(savedCurrency);
+  fetchTransactions();
+  fetchCategories();
+}, [user, fetchTransactions, fetchCategories]);
 
   // --- UNIWERSALNA LOGIKA PRZELICZANIA (GOŚĆ + ZALOGOWANY) ---
   const conversion = useMemo(() => {
-    const targetCode = getCurrencyCode();
-    
-    if (user) {
-      // Dla zalogowanego używamy kursu wyliczonego z backendu
-      const rawInc = salaries.reduce((sum, s) => sum + s.amount, 0);
-      const rawExp = expenseList.reduce((sum, e) => sum + e.amount, 0);
-      return {
-        incomeRate: rawInc > 0 ? summary.totalIncome / rawInc : 1,
-        expenseRate: rawExp > 0 ? summary.totalExpense / rawExp : 1,
-        totalIncome: summary.totalIncome,
-        totalExpense: summary.totalExpense,
-        balance: summary.balance,
-        calc: (amount, rate) => amount * rate
-      };
-    } else {
-      // Dla gościa używamy kursów NBP
-      const targetMid = localRates[targetCode] || 1;
-      const calc = (amount, fromCode) => {
-        const fromMid = localRates[fromCode || "USD"] || 1;
-        return (amount * fromMid) / targetMid;
-      };
-      
-      const totalInc = salaries.reduce((sum, s) => sum + calc(s.amount, s.currency), 0);
-      const totalExp = expenseList.reduce((sum, e) => sum + calc(e.amount, e.currency), 0);
-      
-      return {
-        incomeRate: 1, 
-        expenseRate: 1,
-        totalIncome: totalInc,
-        totalExpense: totalExp,
-        balance: totalInc - totalExp,
-        calc: calc
-      };
-    }
-  }, [salaries, expenseList, summary, localRates, user]);
+  if (ratesLoading || ratesError) {
+    return null;
+  }
 
-  useEffect(() => {
-    setTotalBalance(conversion.balance);
-  }, [conversion.balance]);
+  try {
+    const targetCode = currency.split(" ")[0];
+
+    if (!Number.isFinite(localRates[targetCode])) {
+      throw new Error("Nieobsługiwana waluta docelowa.");
+    }
+
+    const convertTransaction = transaction => {
+      if (!Number.isFinite(transaction.amount)) {
+        throw new Error("Niepoprawna kwota transakcji.");
+      }
+
+      return {
+        ...transaction,
+        amount: convertCurrency(
+          transaction.amount,
+          transaction.currency,
+          targetCode,
+          localRates
+        ),
+        currency: targetCode
+      };
+    };
+
+    const convertedSalaries = salaries.map(convertTransaction);
+    const convertedExpenses = expenseList.map(convertTransaction);
+
+    const totalIncome = convertedSalaries.reduce(
+      (sum, transaction) => sum + transaction.amount,
+      0
+    );
+
+    const totalExpense = convertedExpenses.reduce(
+      (sum, transaction) => sum + transaction.amount,
+      0
+    );
+
+    return {
+      salaries: convertedSalaries,
+      expenseList: convertedExpenses,
+      totalIncome,
+      totalExpense,
+      balance: totalIncome - totalExpense
+    };
+  } catch {
+    return {
+      error: "Nie można przeliczyć transakcji. Sprawdź ich kwoty i waluty."
+    };
+  }
+}, [salaries, expenseList, currency, localRates, ratesLoading, ratesError]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -253,14 +256,40 @@ const Dashboard = ({ user }) => {
   const handleExpenseChange = (category, amount) => {
     setExpenses(prev => ({ ...prev, [category]: amount }));
   };
+  if (ratesLoading) {
+  return (
+    <div className="dashboard">
+      <p role="status">Pobieranie kursów walut…</p>
+    </div>
+  );
+}
 
+if (ratesError) {
+  return (
+    <div className="dashboard">
+      <p role="alert">{ratesError}</p>
+      <button type="button" onClick={fetchNBPRates}>
+        Spróbuj ponownie
+      </button>
+    </div>
+  );
+}
   // --- DANE DO WYKRESÓW (PRZELICZONE) ---
-  const visibleSalaries = salaries.slice(-10); 
+  if (conversion.error) {
+  return (
+    <div className="dashboard">
+      <p role="alert">{conversion.error}</p>
+    </div>
+  );
+}
+  const visibleSalaries = [...conversion.salaries]
+  .sort((a, b) => new Date(a.date) - new Date(b.date))
+  .slice(-10);
   const chartData = {
     labels: visibleSalaries.length > 0 ? visibleSalaries.map(s => new Date(s.date).toLocaleDateString()) : ["No Data"],
     datasets: [{
       label: `Income History (${currency})`,
-      data: visibleSalaries.map(s => user ? s.amount * conversion.incomeRate : conversion.calc(s.amount, s.currency)),
+      data: visibleSalaries.map(s => s.amount),
       borderColor: "#4caf50", 
       backgroundColor: "rgba(76, 175, 80, 0.1)", 
       borderWidth: 3,
@@ -268,11 +297,10 @@ const Dashboard = ({ user }) => {
     }],
   };
 
-  const aggregatedExpenses = expenseList.reduce((acc, curr) => {
-    const convertedAmount = user ? curr.amount * conversion.expenseRate : conversion.calc(curr.amount, curr.currency);
-    acc[curr.category] = (acc[curr.category] || 0) + convertedAmount;
-    return acc;
-  }, {});
+  const aggregatedExpenses = conversion.expenseList.reduce((acc, curr) => {
+  acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
+  return acc;
+}, {});
 
   const barExpenseData = {
     labels: Object.keys(aggregatedExpenses),
@@ -299,8 +327,12 @@ const Dashboard = ({ user }) => {
       <div className="balance-wrapper">
         <div className="balance-container">
           <h3>Total Balance 💵</h3>
-          <p className={`balance-amount ${totalBalance < 0 ? "negative" : "positive"}`}>
-            {currencySymbol} {totalBalance.toFixed(2)}
+          <p
+            className={`balance-amount ${
+              conversion.balance < 0 ? "negative" : "positive"
+            }`}
+          >
+            {currencySymbol} {conversion.balance.toFixed(2)}
           </p>
         </div>
       </div>
@@ -309,8 +341,8 @@ const Dashboard = ({ user }) => {
       </div>
       
       <ChartsRow 
-        salaries={salaries} 
-        expenseList={expenseList} 
+        salaries={conversion.salaries}
+        expenseList={conversion.expenseList}
         currency={currency} 
         totalIncome={conversion.totalIncome} 
         totalExpense={conversion.totalExpense} 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { Line } from "react-chartjs-2";
 import "./ChartsRow.scss";
 import { 
@@ -19,19 +19,8 @@ const ChartsRow = ({ salaries, expenseList, currency, totalIncome, totalExpense 
     "July", "August", "September", "October", "November", "December"
   ];
 
-  // --- LOGIKA PRZELICZANIA KURSÓW ---
-  // Obliczamy kursy na podstawie danych przesłanych z Dashboardu
-  const incomeRate = useMemo(() => {
-    const rawIncome = salaries.reduce((sum, s) => sum + s.amount, 0);
-    return rawIncome > 0 ? totalIncome / rawIncome : 1;
-  }, [salaries, totalIncome]);
-
-  const expenseRate = useMemo(() => {
-    const rawExpense = expenseList.reduce((sum, e) => sum + e.amount, 0);
-    return rawExpense > 0 ? totalExpense / rawExpense : 1;
-  }, [expenseList, totalExpense]);
-
-  // Filtrowanie miesięczne z uwzględnieniem przelicznika
+  // Dashboard przekazuje kwoty już przeliczone na wybraną walutę.
+  // Filtrowanie miesięczne
   const filteredIncomes = salaries.filter(s => {
     const d = new Date(s.date);
     return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
@@ -43,8 +32,8 @@ const ChartsRow = ({ salaries, expenseList, currency, totalIncome, totalExpense 
   });
 
   const recentTransactions = [
-    ...salaries.map(s => ({ ...s, type: 'income', rate: incomeRate })),
-    ...expenseList.map(e => ({ ...e, type: 'expense', rate: expenseRate }))
+    ...salaries.map(s => ({ ...s, type: 'income' })),
+    ...expenseList.map(e => ({ ...e, type: 'expense' }))
   ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
 
   return (
@@ -60,7 +49,7 @@ const ChartsRow = ({ salaries, expenseList, currency, totalIncome, totalExpense 
             data={{
               labels: salaries.map(s => s.date),
               datasets: [{
-                data: salaries.map(s => s.amount * incomeRate),
+                data: salaries.map(s => s.amount),
                 borderColor: "#ffa600",
                 borderWidth: 2,
                 fill: false,
@@ -86,7 +75,7 @@ const ChartsRow = ({ salaries, expenseList, currency, totalIncome, totalExpense 
             data={{
               labels: expenseList.map(e => e.date),
               datasets: [{
-                data: expenseList.map(e => e.amount * expenseRate),
+                data: expenseList.map(e => e.amount),
                 borderColor: "#ff4d6d",
                 borderWidth: 2,
                 fill: false,
@@ -124,13 +113,13 @@ const ChartsRow = ({ salaries, expenseList, currency, totalIncome, totalExpense 
           <div className="mini-card income-accent">
             <span className="label">Income ({months[selectedMonth]})</span>
             <h4 className="value">
-              {currency.split(' ')[1] || currency.split(' ')[0]} {(filteredIncomes.reduce((sum, s) => sum + s.amount, 0) * incomeRate).toFixed(2)}
+              {currency.split(' ')[1] || currency.split(' ')[0]} {filteredIncomes.reduce((sum, s) => sum + s.amount, 0).toFixed(2)}
             </h4>
           </div>
           <div className="mini-card expense-accent">
             <span className="label">Spendings ({months[selectedMonth]})</span>
             <h4 className="value">
-              {currency.split(' ')[1] || currency.split(' ')[0]} {(filteredExpenses.reduce((sum, e) => sum + e.amount, 0) * expenseRate).toFixed(2)}
+              {currency.split(' ')[1] || currency.split(' ')[0]} {filteredExpenses.reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
             </h4>
           </div>
         </div>
@@ -149,7 +138,7 @@ const ChartsRow = ({ salaries, expenseList, currency, totalIncome, totalExpense 
                     <p className="t-date">{new Date(t.date).toLocaleDateString()}</p>
                   </div>
                   <p className={`t-amount-val ${t.type}`}>
-                    {t.type === 'income' ? '+' : '-'} {(t.amount * t.rate).toFixed(2)} {currency.split(' ')[1] || currency.split(' ')[0]}
+                    {t.type === 'income' ? '+' : '-'} {t.amount.toFixed(2)} {currency.split(' ')[1] || currency.split(' ')[0]}
                   </p>
                 </div>
               ))

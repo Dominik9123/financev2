@@ -1,4 +1,5 @@
 using MailKit.Net.Smtp;
+using Microsoft.Extensions.Options;
 using MimeKit;
 
 namespace backend.Services
@@ -10,19 +11,27 @@ namespace backend.Services
 
     public class EmailSender : IEmailSender
     {
+        private readonly IOptions<SmtpOptions> _smtpOptions;
+
+        public EmailSender(IOptions<SmtpOptions> smtpOptions)
+        {
+            _smtpOptions = smtpOptions;
+        }
+
         public async Task SendEmailAsync(string email, string subject, string htmlMessage)
         {
+            // SMTP is required only when sending mail, not for other account operations.
+            var smtp = _smtpOptions.Value;
             var emailMessage = new MimeMessage();
-            emailMessage.From.Add(new MailboxAddress("Finance Tracker", "no-reply@financeapp.local"));
+            emailMessage.From.Add(new MailboxAddress(smtp.FromName, smtp.FromEmail));
             emailMessage.To.Add(new MailboxAddress("", email));
             emailMessage.Subject = subject;
             emailMessage.Body = new TextPart("html") { Text = htmlMessage };
 
             using (var client = new SmtpClient())
             {
-                // Dane z Mailtrap SMTP (Integrations)
-                await client.ConnectAsync("sandbox.smtp.mailtrap.io", 587, MailKit.Security.SecureSocketOptions.StartTls);
-                await client.AuthenticateAsync("60d5da6879bdba", "dd8281f55f7128");
+                await client.ConnectAsync(smtp.Host, smtp.Port, MailKit.Security.SecureSocketOptions.StartTls);
+                await client.AuthenticateAsync(smtp.Username, smtp.Password);
                 await client.SendAsync(emailMessage);
                 await client.DisconnectAsync(true);
             }

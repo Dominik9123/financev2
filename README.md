@@ -25,12 +25,69 @@ Przetestuj aplikację tutaj: [dominik9123.github.io/financev2/](https://dominik9
 * **API**: Integracja z API NBP (kursy średnie z tabeli A).
 
 ### 📦 Uruchomienie Lokalnie
-1. **Backend**: 
-   - Wejdź do folderu `backend`, wykonaj `dotnet restore` oraz `dotnet run`.
-   - Serwer ruszy na `http://localhost:5109`.
-2. **Frontend**:
-   - Wejdź do folderu `frontend`, wykonaj `npm install` oraz `npm start`.
-   - Aplikacja ruszy na `http://localhost:3000`.
+
+**Wymagania:**
+
+* Node.js 20 lub nowszy oraz npm.
+* .NET SDK 9 — backend jest obecnie kompilowany dla `net9.0`.
+
+**1. Backend**
+
+Otwórz terminal w katalogu głównym projektu i wykonaj:
+
+```powershell
+cd backend
+dotnet restore
+dotnet tool restore
+dotnet ef database update
+dotnet run --launch-profile http
+```
+
+* `dotnet restore` pobiera zależności backendu z NuGet.
+* `dotnet tool restore` przywraca lokalne narzędzie `dotnet-ef` z manifestu `backend/.config/dotnet-tools.json`.
+* `dotnet ef database update` tworzy bazę SQLite przy pierwszym uruchomieniu lub aktualizuje jej schemat zgodnie z migracjami. Plik bazy powstaje w `backend/financev2.db`.
+* `dotnet run --launch-profile http` uruchamia backend pod adresem [http://localhost:5109](http://localhost:5109), w środowisku `Development`.
+
+Pozostaw ten terminal uruchomiony. Do testowania resetu hasła skonfiguruj SMTP zgodnie z sekcją „Konfiguracja poczty — lokalny development” poniżej.
+
+**2. Frontend**
+
+Otwórz **drugi terminal w katalogu głównym projektu**, w którym znajduje się `package.json`, i wykonaj:
+
+```powershell
+npm ci
+npm start
+```
+
+`npm ci` instaluje zależności w wersjach zapisanych w `package-lock.json`, zapewniając powtarzalną instalację. Przy kolejnych uruchomieniach, jeśli zależności się nie zmieniły, wystarczy `npm start`.
+
+Otwórz aplikację pod adresem [http://localhost:3000/financev2/](http://localhost:3000/financev2/).
+
+Jeżeli port `3000` jest zajęty, serwer frontendu może zaproponować port `3001`. Wtedy otwórz [http://localhost:3001/financev2/](http://localhost:3001/financev2/). Backend dopuszcza oba lokalne adresy frontendu w konfiguracji CORS. Backend i frontend muszą działać jednocześnie, aby korzystać z kont użytkowników i danych zapisanych w SQLite.
+
+### Konfiguracja poczty — lokalny development
+
+Reset hasła używa Mailtrap Email Sandbox. Wiadomości trafiają do sandboxa w Mailtrap, nie do rzeczywistej skrzynki odbiorcy.
+
+1. W Mailtrap otwórz **Email Testing → Sandboxes → swój sandbox → Integration**. Jeżeli dane SMTP były wcześniej opublikowane, wybierz **Reset Credentials** i użyj nowej pary danych dostępowych.
+2. W PowerShell, w katalogu `backend`, zapisz nowe dane przez User Secrets. Poniższy kod poprosi o login i hasło bez umieszczania ich w historii poleceń:
+
+   ```powershell
+   $smtpUsername = Read-Host 'Mailtrap SMTP Username'
+   $smtpPassword = Read-Host 'Mailtrap SMTP Password' -MaskInput
+   @{ 'Smtp:Username' = $smtpUsername; 'Smtp:Password' = $smtpPassword } |
+     ConvertTo-Json -Compress | dotnet user-secrets set
+   Remove-Variable smtpUsername, smtpPassword
+   ```
+
+   Opcja `-MaskInput` wymaga PowerShell 7. W Windows PowerShell 5.1 można ustawić te wartości w Visual Studio: kliknij prawym przyciskiem projekt backendu, wybierz **Manage User Secrets** i dodaj klucze `Smtp:Username` oraz `Smtp:Password`.
+3. Uruchom ponownie backend przez `dotnet run`. Profil lokalny ustawia środowisko `Development`, w którym ASP.NET Core automatycznie odczytuje User Secrets.
+
+Host, port i nadawca znajdują się w `backend/appsettings.json`; można je nadpisać kluczami `Smtp:Host`, `Smtp:Port`, `Smtp:FromEmail` i `Smtp:FromName`. Integracja używa STARTTLS — wybierz obsługujący go port, np. 587.
+
+User Secrets przechowuje dane poza repozytorium, w profilu użytkownika. Jest to mechanizm developerski; wartości nie są szyfrowane. Nie kopiuj ich do kodu ani plików konfiguracyjnych w repozytorium. Przy wdrożeniu użyj magazynu sekretów hostingu lub zmiennych środowiskowych `Smtp__Username` i `Smtp__Password`.
+
+Brak danych SMTP nie blokuje startu aplikacji ani logowania. Konfiguracja jest walidowana dopiero przy próbie wysłania wiadomości resetującej hasło.
 
 ---
 
@@ -58,5 +115,27 @@ Check out the live version: [dominik9123.github.io/financev2/](https://dominik91
    - Navigate to `backend`, run `dotnet restore` and `dotnet run`.
 2. **Frontend**:
    - Navigate to `frontend`, run `npm install` and `npm start`.
+
+### Email configuration — local development
+
+Password reset uses Mailtrap Email Sandbox. Messages appear in the Mailtrap sandbox, not the recipient's real inbox.
+
+1. Open **Email Testing → Sandboxes → your sandbox → Integration** in Mailtrap. If SMTP credentials were exposed, use **Reset Credentials** before configuring the app.
+2. From `backend`, use PowerShell 7 to enter the new credentials without including their values in command history:
+
+   ```powershell
+   $smtpUsername = Read-Host 'Mailtrap SMTP Username'
+   $smtpPassword = Read-Host 'Mailtrap SMTP Password' -MaskInput
+   @{ 'Smtp:Username' = $smtpUsername; 'Smtp:Password' = $smtpPassword } |
+     ConvertTo-Json -Compress | dotnet user-secrets set
+   Remove-Variable smtpUsername, smtpPassword
+   ```
+
+   Alternatively, use Visual Studio's **Manage User Secrets** for the backend project and add `Smtp:Username` and `Smtp:Password`.
+3. Restart the backend with `dotnet run`. The local launch profile uses `Development`, which loads User Secrets automatically.
+
+Non-secret SMTP settings are in `backend/appsettings.json`. The integration requires a STARTTLS-capable port, such as 587. User Secrets stores unencrypted development credentials outside the repository. For deployment, use the hosting platform's secret store or environment variables `Smtp__Username` and `Smtp__Password`.
+
+SMTP settings are validated when sending a password-reset email; missing credentials do not prevent startup or login.
 
 ---

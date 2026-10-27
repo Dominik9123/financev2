@@ -17,6 +17,11 @@
 .env.development.local
 .env.test.local
 .env.production.local
+.env
+.env.*
+!.env.example
+!.env.*.example
+secrets.json
 
 npm-debug.log*
 yarn-debug.log*
@@ -28,4 +33,3 @@ yarn-error.log*
 backend/obj/
 backend/bin/
 backend/obj/Debug/net9.0/backend.AssemblyInfoInputs.cache
-.gitignore

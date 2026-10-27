@@ -25,6 +25,9 @@ builder.Services.AddIdentity<User, IdentityRole>(options =>
 builder.Services.AddControllers();
 
 // Rejestracja usługi wysyłania maili (Mailtrap)
+builder.Services.AddOptions<SmtpOptions>()
+    .Bind(builder.Configuration.GetSection(SmtpOptions.SectionName))
+    .ValidateDataAnnotations();
 builder.Services.AddTransient<IEmailSender, EmailSender>();
 
 // Rejestracja HttpClient i CurrencyService
@@ -35,7 +38,7 @@ builder.Services.AddSingleton<CurrencyService>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReact", policy =>
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins("http://localhost:3000", "http://localhost:3001")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials());
