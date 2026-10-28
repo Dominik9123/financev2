@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { apiErrorMessage, fetchApiList } from "../services/financeApi";
+import { SessionContext } from "./useSession";
 
 export function readStoredArray(key) {
   const value = JSON.parse(localStorage.getItem(key) || "[]");
@@ -29,6 +30,7 @@ function readGuestCategories() {
 }
 
 function useFinanceCollection(user, path, readGuestData) {
+  const { expireSession } = useContext(SessionContext);
   const requestVersion = useRef(0);
   const active = useRef(false);
   const currentOwner = useRef(user);
@@ -61,9 +63,10 @@ function useFinanceCollection(user, path, readGuestData) {
           ? "Could not load account data. Please try again."
           : "Could not read local data. Your saved data has not been deleted."),
       });
+      if (user?.id && error.status === 401) expireSession(user.id);
       return false;
     }
-  }, [user, path, readGuestData]);
+  }, [user, path, readGuestData, expireSession]);
 
   useEffect(() => {
     active.current = true;

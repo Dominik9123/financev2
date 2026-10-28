@@ -16,6 +16,9 @@ public static class PasswordPolicy
         options.Password.RequireLowercase = false;
         options.Password.RequireNonAlphanumeric = true;
         options.User.RequireUniqueEmail = true;
+        options.Lockout.AllowedForNewUsers = true;
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
     }
 }
 

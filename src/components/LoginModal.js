@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { FaEye, FaEyeSlash, FaExclamationTriangle } from "react-icons/fa";
 import "./LoginModal.scss";
 import { toast } from "react-toastify";
 import { apiErrorMessage, postJson } from "../services/financeApi";
 import { getPasswordRequirements, isValidPassword } from "../utils/validation";
+import { signIn } from "../services/sessionService";
 
 export default function LoginModal({ onClose, onReset, setUser, initialResetData }) {
   // Jeśli mamy dane resetu, startujemy od widoku "setNewPassword"
@@ -23,6 +24,10 @@ export default function LoginModal({ onClose, onReset, setUser, initialResetData
   const [lastName, setLastName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
+  const loginPending = useRef(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const resetPending = useRef(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   const handleKeyUp = (e) => {
     setIsCapsLockOn(e.getModifierState("CapsLock"));
@@ -30,25 +35,21 @@ export default function LoginModal({ onClose, onReset, setUser, initialResetData
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    if (loginPending.current) return;
+    loginPending.current = true;
+    setIsLoggingIn(true);
     try {
-      const response = await fetch("http://localhost:5109/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, rememberMe }),
-        credentials: "include"
-      });
-
-      if (!response.ok) {
-        toast.error("Login failed! Check your credentials.");
-        return;
-      }
-
-      const data = await response.json();
-      toast.success(`Welcome back ${data.firstName}!`);
-      if (setUser) setUser(data.firstName);
+      const account = await signIn(email, password, rememberMe);
+      if (setUser) setUser(account);
+      toast.success(`Welcome back ${account.firstName || account.email}!`);
       onClose();
     } catch (error) {
-      toast.error("Connection error.");
+      toast.error(error.status === 401
+        ? "Login failed. Check your credentials or try again later."
+        : apiErrorMessage(error, "Could not log in. Please try again."));
+    } finally {
+      loginPending.current = false;
+      setIsLoggingIn(false);
     }
   };
 
@@ -83,6 +84,7 @@ export default function LoginModal({ onClose, onReset, setUser, initialResetData
 
   const handleFinalReset = async (e) => {
     e.preventDefault();
+    if (resetPending.current) return;
     if (password !== confirmPassword) {
       toast.warning("Passwords do not match!");
       return;
@@ -91,37 +93,36 @@ export default function LoginModal({ onClose, onReset, setUser, initialResetData
       toast.warning("Password must contain 8–128 characters, an uppercase letter, a digit and a special character.");
       return;
     }
-
+    resetPending.current = true;
+    setIsResetting(true);
     try {
-      const response = await fetch("http://localhost:5109/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: initialResetData.email,
-          token: initialResetData.token,
-          newPassword: password
-        }),
+      await postJson("/auth/reset-password", {
+        email: initialResetData.email,
+        token: initialResetData.token,
+        newPassword: password
       });
 
-      if (response.ok) {
-        toast.success("Password changed successfully! Redirecting...");
-      
-        // Czyścimy URL natychmiast
-        window.history.replaceState({}, document.title, "/financev2/");
-        setView("login");
-        setPassword("");
-        setConfirmPassword("");
+      toast.success("Password changed. You can now log in.");
 
-        // Twardy refresh po chwili, aby Dashboard załadował się na czysto
-        setTimeout(() => {
-          window.location.href = "/financev2/";
-        }, 1500);
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData[0]?.description || "Reset failed. Link might be expired.");
-      }
+      window.history.replaceState(
+        {},
+        document.title,
+        "/financev2/"
+      );
+
+      setPassword("");
+      setConfirmPassword("");
+      setView("login");
     } catch (error) {
-      toast.error("Server connection error.");
+      toast.error(
+        apiErrorMessage(
+          error,
+          "Could not reset your password. Please try again."
+        )
+      );
+    } finally {
+      resetPending.current = false;
+      setIsResetting(false);
     }
   };
 
@@ -129,29 +130,31 @@ export default function LoginModal({ onClose, onReset, setUser, initialResetData
   const resetReqs = getPasswordRequirements(password);
 
   return (
-    <div className="login-modal-backdrop" onClick={onClose}>
+    <div className="login-modal-backdrop" onClick={() => {
+      if (!loginPending.current && !resetPending.current) onClose();
+    }}>
       <div className="login-modal-box" onClick={(e) => e.stopPropagation()}>
-        <button className="login-modal-close" onClick={onClose}>×</button>
+        <button className="login-modal-close" onClick={onClose} disabled={isLoggingIn || isResetting}>×</button>
 
         {/* --- WIDOK: LOGOWANIE --- */}
         {view === "login" && (
-          <form onSubmit={handleLogin}>
+          <form onSubmit={handleLogin} aria-label="Login">
             <h2 className="text-xl font-semibold mb-4">Welcome Again!</h2>
-            <input type="email" placeholder="E-mail" className="login-modal-input" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input type="email" placeholder="E-mail" className="login-modal-input" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={isLoggingIn} />
             <div className="password-container">
-              <input type={showPassword ? "text" : "password"} placeholder="Password" className="login-modal-input" value={password} onChange={(e) => setPassword(e.target.value)} onKeyUp={handleKeyUp} required />
+              <input type={showPassword ? "text" : "password"} placeholder="Password" className="login-modal-input" value={password} onChange={(e) => setPassword(e.target.value)} onKeyUp={handleKeyUp} required disabled={isLoggingIn} />
               <span className="password-icon" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <FaEyeSlash /> : <FaEye />}</span>
             </div>
             {isCapsLockOn && <div className="caps-lock-warning"><FaExclamationTriangle /> Caps Lock is ON</div>}
             <div className="login-modal-remember-me">
-              <input type="checkbox" id="rememberMe" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
+              <input type="checkbox" id="rememberMe" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} disabled={isLoggingIn} />
               <label htmlFor="rememberMe">Remember Me</label>
             </div>
-            <button className="login-modal-btn">Login</button>
+            <button className="login-modal-btn" disabled={isLoggingIn}>{isLoggingIn ? "Logging in…" : "Login"}</button>
             <h2 className="text-xl mt-4">Forgot your Password?</h2>
-            <button type="button" className="login-modal-btn" onClick={onReset}>Reset Password</button>
+            <button type="button" className="login-modal-btn" onClick={onReset} disabled={isLoggingIn}>Reset Password</button>
             <h2 className="text-xl">New here?</h2>
-            <button type="button" className="login-modal-btn" onClick={() => setView("register")}>Register</button>
+            <button type="button" className="login-modal-btn" onClick={() => setView("register")} disabled={isLoggingIn}>Register</button>
           </form>
         )}
 
@@ -197,6 +200,7 @@ export default function LoginModal({ onClose, onReset, setUser, initialResetData
                 onKeyUp={handleKeyUp}
                 minLength={8}
                 maxLength={128}
+                disabled={isResetting}
                 required 
               />
               <span className="password-icon" onClick={() => setShowPassword(!showPassword)}>
@@ -224,10 +228,13 @@ export default function LoginModal({ onClose, onReset, setUser, initialResetData
               onChange={(e) => setConfirmPassword(e.target.value)} 
               minLength={8}
               maxLength={128}
+              disabled={isResetting}
               required 
             />
-            <button className="login-modal-btn">Update Password</button>
-            <button type="button" className="login-modal-btn mt-2" onClick={() => setView("login")}>Cancel</button>
+            <button className="login-modal-btn" disabled={isResetting}>
+              {isResetting ? "Updating…" : "Update Password"}
+            </button>
+            <button type="button" className="login-modal-btn mt-2" onClick={() => setView("login")} disabled={isResetting}>Cancel</button>
           </form>
         )}
       </div>

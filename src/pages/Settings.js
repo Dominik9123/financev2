@@ -3,6 +3,7 @@ import { toast } from "react-toastify";
 import { apiErrorMessage, postJson, requestApi } from "../services/financeApi";
 import { readStoredArray, useCategories } from "../hooks/useFinanceData";
 import { categoryExists, normalizeCategoryName } from "../utils/validation";
+import { useSessionGuard } from "../hooks/useSession";
 // Import stylów Toastify MUSI być przed Twoim SCSS
 import "react-toastify/dist/ReactToastify.css"; 
 import "./Settings.scss";
@@ -15,10 +16,13 @@ const Settings = ({ user }) => {
   const [selectedCurrency, setSelectedCurrency] = useState("USD ($)");
   const [annualBudget, setAnnualBudget] = useState(0);
   const categoryData = useCategories(user);
+  const reloadCategories = useRef(categoryData.reload);
+  reloadCategories.current = categoryData.reload;
   const customCategories = categoryData.data;
   const [newCategory, setNewCategory] = useState("");
   const pending = useRef(false);
   const [isPending, setIsPending] = useState(false);
+  const { isCurrent, isSameSession, canWrite, reportSessionError, expired } = useSessionGuard(user);
 
   // Zaktualizowany config Toasta - dodano theme: "dark"
   const toastConfig = {
@@ -37,16 +41,18 @@ const Settings = ({ user }) => {
   }, [user]);
 
   const runAction = async (action, failureMessage) => {
-    if (pending.current) return;
+    if (pending.current || !canWrite()) return;
     pending.current = true;
     setIsPending(true);
     try {
       await action();
     } catch (error) {
+      if (!isSameSession()) return;
+      reportSessionError(error);
       toast.error(apiErrorMessage(error, failureMessage), toastConfig);
     } finally {
       pending.current = false;
-      setIsPending(false);
+      if (isCurrent()) setIsPending(false);
     }
   };
 
@@ -74,6 +80,7 @@ const Settings = ({ user }) => {
     return runAction(async () => {
       const response = await requestApi("/transaction/export");
       const blob = await response.blob();
+      if (!isCurrent()) return;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -111,9 +118,10 @@ const Settings = ({ user }) => {
         const updated = [...readStoredArray("customCategories"), { name }];
         localStorage.setItem("customCategories", JSON.stringify(updated));
       }
+      if (!isCurrent()) return;
       setNewCategory("");
       toast.success("Category saved successfully.", toastConfig);
-      await categoryData.reload();
+      await reloadCategories.current();
     }, "Could not save category. Your input has been preserved.");
   };
 
@@ -127,8 +135,9 @@ const Settings = ({ user }) => {
       const updated = readStoredArray("customCategories").filter(c => c.name !== categoryObj.name);
       localStorage.setItem("customCategories", JSON.stringify(updated));
     }
+    if (!isCurrent()) return;
     toast.success("Category removed.", toastConfig);
-    await categoryData.reload();
+    await reloadCategories.current();
   }, "Could not delete category. Please try again.");
 
   const executeReset = () => runAction(async () => {
@@ -140,6 +149,7 @@ const Settings = ({ user }) => {
       localStorage.removeItem("salaries");
       localStorage.removeItem("expenses");
     }
+    if (!isCurrent()) return;
     setIsResetModalOpen(false);
     toast.success("Transactions deleted successfully.", toastConfig);
   }, "Could not reset transactions. Please try again.");
@@ -179,9 +189,9 @@ const Settings = ({ user }) => {
           onChange={(e) => setNewCategory(e.target.value.slice(0, 25))}
           maxLength="25"
           aria-label="New category"
-          disabled={isPending}
+          disabled={isPending || expired}
         />
-        <button className="category-button" onClick={handleAddCategory} disabled={isPending || categoryData.loading || !!categoryData.error}>Add Category ➕</button>
+        <button className="category-button" onClick={handleAddCategory} disabled={isPending || expired || categoryData.loading || !!categoryData.error}>Add Category ➕</button>
 
         {categoryData.loading && <p role="status">Loading categories…</p>}
         {categoryData.error && (
@@ -195,7 +205,7 @@ const Settings = ({ user }) => {
           {customCategories.map((category, index) => (
             <li key={category.id || index} className="category-item">
               <span className="category-name">{category.name}</span>
-              <button aria-label={`Delete ${category.name}`} onClick={() => handleDeleteCategory(category)} className="delete-button" disabled={isPending}>❌</button>
+              <button aria-label={`Delete ${category.name}`} onClick={() => handleDeleteCategory(category)} className="delete-button" disabled={isPending || expired}>❌</button>
             </li>
           ))}
         </ul>
@@ -203,11 +213,11 @@ const Settings = ({ user }) => {
 
       <div className="reset-section">
         <div className="button-container">
-          <button className="confirm-button" onClick={handleExport} disabled={!user || isPending}>
+          <button className="confirm-button" onClick={handleExport} disabled={!user || isPending || expired}>
             Export CSV 📊
           </button>
           
-          <button className="reset-button" onClick={() => setIsResetModalOpen(true)} disabled={isPending}>
+          <button className="reset-button" onClick={() => setIsResetModalOpen(true)} disabled={isPending || expired}>
             {user ? "Reset Account Data 🔄" : "Reset Local Data 🔄"}
           </button>
         </div>
@@ -223,7 +233,7 @@ const Settings = ({ user }) => {
               <button className="btn-cancel" onClick={() => setIsResetModalOpen(false)} disabled={isPending}>
                 Cancel
               </button>
-              <button className="btn-confirm-danger" onClick={executeReset} disabled={isPending}>
+              <button className="btn-confirm-danger" onClick={executeReset} disabled={isPending || expired}>
                 {isPending ? "Deleting…" : "Yes, Delete Everything"}
               </button>
             </div>

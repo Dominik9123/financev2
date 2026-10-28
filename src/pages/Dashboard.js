@@ -8,6 +8,7 @@ import { toast } from "react-toastify";
 import { apiErrorMessage, postJson } from "../services/financeApi";
 import { readStoredArray, useCategories, useTransactions } from "../hooks/useFinanceData";
 import { categoryExists, defaultCategoryNames, isValidAmount } from "../utils/validation";
+import { useSessionGuard } from "../hooks/useSession";
 
 import {
   Chart as ChartJS,
@@ -48,12 +49,15 @@ const Dashboard = ({ user }) => {
   const [currency, setCurrency] = useState("USD ($)");
   const [expenses, setExpenses] = useState({});
   const transactions = useTransactions(user);
+  const reloadTransactions = useRef(transactions.reload);
+  reloadTransactions.current = transactions.reload;
   const categoryData = useCategories(user);
   const salaries = useMemo(() => transactions.data.filter(t => t.type === "Income"), [transactions.data]);
   const expenseList = useMemo(() => transactions.data.filter(t => t.type === "Expense"), [transactions.data]);
   const customCategories = categoryData.data;
   const saving = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
+  const { isCurrent, isSameSession, canWrite, reportSessionError, expired } = useSessionGuard(user);
 
   // Kursy walut są wspólne dla konta i trybu gościa.
   const [localRates, setLocalRates] = useState({ PLN: 1 });
@@ -149,7 +153,7 @@ useEffect(() => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (saving.current) return;
+    if (saving.current || !canWrite()) return;
     if (!isValidAmount(salary) || !date || Number.isNaN(new Date(date).getTime()) || date === "0001-01-01") {
       toast.error("Enter an amount between 0.01 and 1,000,000,000 with at most two decimal places, and a valid date.");
       return;
@@ -173,21 +177,24 @@ useEffect(() => {
         const updated = [...readStoredArray("salaries"), { ...newTransaction, date }];
         localStorage.setItem("salaries", JSON.stringify(updated));
       }
+      if (!isCurrent()) return;
       setSalary("");
       setDate("");
       toast.success("Income saved successfully.");
-      await transactions.reload();
+      await reloadTransactions.current();
     } catch (error) {
+      if (!isSameSession()) return;
+      reportSessionError(error);
       const message = apiErrorMessage(error, "Could not save income. Your form has been preserved.");
       toast.error(error.status === 0 ? `${message} Check history before retrying to avoid a duplicate.` : message);
     } finally {
       saving.current = false;
-      setIsSaving(false);
+      if (isCurrent()) setIsSaving(false);
     }
   };
 
   const handleExpenseSubmit = async () => {
-    if (saving.current) return;
+    if (saving.current || !canWrite()) return;
     const currencyCode = getCurrencyCode();
     const newExpenses = Object.entries(expenses)
       .filter(([_, amount]) => amount !== "")
@@ -211,7 +218,9 @@ useEffect(() => {
     try {
       if (user) {
         for (const item of newExpenses) {
+          if (!canWrite()) return;
           await postJson("/transaction", item);
+          if (!isCurrent()) return;
           savedCount += 1;
           // Clear only confirmed entries so retrying a partial batch cannot resend them.
           setExpenses(previous => {
@@ -228,12 +237,14 @@ useEffect(() => {
       }
       toast.success("Expenses saved successfully.");
     } catch (error) {
+      if (!isSameSession()) return;
+      reportSessionError(error);
       const detail = apiErrorMessage(error, "Could not save all expenses.");
       toast.error(`${savedCount ? `${savedCount} expense(s) saved. ` : ""}${detail} Unconfirmed amounts remain in the form. Check history before retrying.`);
     } finally {
-      if (savedCount > 0) await transactions.reload();
+      if (savedCount > 0 && isCurrent()) await reloadTransactions.current();
       saving.current = false;
-      setIsSaving(false);
+      if (isCurrent()) setIsSaving(false);
     }
   };
 
@@ -316,10 +327,10 @@ if (ratesError) {
       )}
       <form onSubmit={handleSubmit}>
         <label className="label-text">Salary Amount:</label>
-        <input aria-label="Salary amount" type="number" value={salary} onChange={(e) => setSalary(e.target.value)} placeholder="Enter Amount:" required min="0.01" max="1000000000" step="0.01" disabled={isSaving} />
+        <input aria-label="Salary amount" type="number" value={salary} onChange={(e) => setSalary(e.target.value)} placeholder="Enter Amount:" required min="0.01" max="1000000000" step="0.01" disabled={isSaving || expired} />
         <label className="label-text">Date:</label>
-        <input aria-label="Income date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required disabled={isSaving} />
-        <button type="submit" className="button-payout" disabled={isSaving || transactions.loading || !!transactions.error}>Add Payout</button>
+        <input aria-label="Income date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required disabled={isSaving || expired} />
+        <button type="submit" className="button-payout" disabled={isSaving || expired || transactions.loading || !!transactions.error}>Add Payout</button>
       </form>
       {!transactions.loading && !transactions.error && <>
       <div className="balance-wrapper">
@@ -353,11 +364,11 @@ if (ratesError) {
           <div key={name} className="expense-tile">
             <div className="expense-icon">{icon ? icon : <FaFolderOpen />}</div>
             <span>{name}</span>
-            <input aria-label={`${name} amount`} type="number" value={expenses[name] || ""} onChange={(e) => handleExpenseChange(name, e.target.value)} placeholder="Amount :" min="0.01" max="1000000000" step="0.01" disabled={isSaving} />
+            <input aria-label={`${name} amount`} type="number" value={expenses[name] || ""} onChange={(e) => handleExpenseChange(name, e.target.value)} placeholder="Amount :" min="0.01" max="1000000000" step="0.01" disabled={isSaving || expired} />
           </div>
         ))}
       </div>
-      <button className="expense-submit-button" onClick={handleExpenseSubmit} disabled={isSaving || transactions.loading || !!transactions.error || categoryData.loading || !!categoryData.error}>Add Expense</button>
+      <button className="expense-submit-button" onClick={handleExpenseSubmit} disabled={isSaving || expired || transactions.loading || !!transactions.error || categoryData.loading || !!categoryData.error}>Add Expense</button>
       {!transactions.loading && !transactions.error && <div className="chart-container" style={{ height: '400px' }}><Bar data={barExpenseData} options={{ indexAxis: 'y', responsive: true, maintainAspectRatio: false }} /></div>}
     </div>
   );

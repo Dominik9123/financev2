@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { IoSettingsOutline } from "react-icons/io5";
 import { MdOutlineCompareArrows, MdSpaceDashboard } from "react-icons/md";
@@ -7,12 +7,17 @@ import LoginModal from "./LoginModal";
 import ResetPasswordModal from "./ResetPasswordModal"; 
 import { toast } from "react-toastify";
 import "./Navbar.css";
+import { requestApi } from "../services/financeApi";
+import { useSessionGuard } from "../hooks/useSession";
 
-const Navbar = ({ user, setUser, initialResetData, onCloseReset }) => {
+const Navbar = ({ user, setUser, initialResetData, onCloseReset, sessionExpired = false, guestOnly = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const navigate = useNavigate();
+  const logoutPending = useRef(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { reportSessionError } = useSessionGuard(user);
 
   // AUTOMATYCZNE OTWIERANIE: Jeśli w App.js wykryto dane resetu, otwórz modal
   useEffect(() => {
@@ -22,28 +27,31 @@ const Navbar = ({ user, setUser, initialResetData, onCloseReset }) => {
   }, [initialResetData]);
 
   const handleLogout = async () => {
+    if (logoutPending.current) return;
+    logoutPending.current = true;
+    setIsLoggingOut(true);
     try {
-      const response = await fetch("http://localhost:5109/api/auth/logout", { 
-        method: "POST", 
-        credentials: "include"
-      });
-
-      if (response.ok) {
+      await requestApi("/auth/logout", { method: "POST" });
         setUser(null);
         toast.info("Logged out successfully. See you soon!");
         navigate("/");
-      } else {
-        toast.error("Could not log out. Please try again.");
-      }
     } catch (error) {
-      console.error("Błąd podczas wylogowywania:", error);
-      toast.error("Could not confirm logout. Check your connection and try again.");
+      reportSessionError(error);
+      toast.error(error.status === 0
+        ? "Could not confirm logout. Check your connection and try again."
+        : "Could not log out. Please try again.");
+    } finally {
+      logoutPending.current = false;
+      setIsLoggingOut(false);
     }
   };
 
   const handleCloseLoginModal = () => {
     setShowLoginModal(false);
-    if (onCloseReset) onCloseReset(); // Funkcja z App.js czyszcząca URL
+    if (initialResetData) {
+      if (onCloseReset) onCloseReset();
+      navigate("/", { replace: true });
+    }
   };
 
   return (
@@ -53,7 +61,7 @@ const Navbar = ({ user, setUser, initialResetData, onCloseReset }) => {
       {user && (
         <div className="welcome-container">
           <span className="welcome-separator"> Welcome </span>
-          <span className="welcome-text">{user}</span>
+          <span className="welcome-text">{user.firstName || user.email}</span>
         </div>
       )}
       
@@ -83,16 +91,16 @@ const Navbar = ({ user, setUser, initialResetData, onCloseReset }) => {
           </Link>
         </li>
 
-        {!user ? (
-          <li onClick={() => { setShowLoginModal(true); setIsOpen(false); }}>
+        {guestOnly ? <li>Guest demo</li> : !user || sessionExpired ? (
+          <li><button type="button" className="auth-button" onClick={() => { setShowLoginModal(true); setIsOpen(false); }} disabled={isLoggingOut}>
             <span className="icon-wrapper"><FiLogIn size={24} /></span>
             <span>Login</span>
-          </li>
+          </button></li>
         ) : (
-          <li onClick={() => { handleLogout(); setIsOpen(false); }}>
+          <li><button type="button" className="auth-button" onClick={() => { handleLogout(); setIsOpen(false); }} disabled={isLoggingOut}>
             <span className="icon-wrapper"><FiLogOut size={24} /></span>
             <span>Logout</span>
-          </li>
+          </button></li>
         )}
       </ul>
 

@@ -25,7 +25,11 @@ builder.Services.AddOptions<SmtpOptions>()
 builder.Services.AddTransient<IEmailSender, EmailSender>();
 
 // Rejestracja HttpClient i CurrencyService
-builder.Services.AddHttpClient();
+builder.Services.AddHttpClient("nbp", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
 builder.Services.AddSingleton<CurrencyService>();
 
 // 4. Konfiguracja CORS
@@ -50,15 +54,14 @@ builder.Services.ConfigureApplicationCookie(options =>
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
         return Task.CompletedTask;
     };
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return Task.CompletedTask;
+    };
 });
 
 var app = builder.Build();
-
-using (var scope = app.Services.CreateScope())
-{
-    var currencyService = scope.ServiceProvider.GetRequiredService<CurrencyService>();
-    await currencyService.UpdateRatesAsync();
-}
 
 // 6. Middleware Pipeline
 app.UseCors("AllowReact");

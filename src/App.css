@@ -6,6 +6,34 @@
   text-align: center;
 }
 
+.session-panel {
+  max-width: 680px;
+  margin: 100px auto 24px;
+  padding: 24px;
+  background: #222;
+  border: 1px solid #c26f02;
+  border-radius: 12px;
+  color: white;
+}
+
+.session-panel p {
+  margin: 16px 0;
+}
+
+.session-panel button {
+  margin: 8px 12px 0 0;
+  padding: 10px 16px;
+  border: 1px solid #c26f02;
+  border-radius: 6px;
+  background: #333;
+  color: white;
+  cursor: pointer;
+}
+
+.session-banner {
+  margin-bottom: 0;
+}
+
 .App-logo {
   height: 40vmin;
   pointer-events: none;

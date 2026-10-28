@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Dashboard from "./pages/Dashboard";
@@ -6,11 +6,14 @@ import History from "./pages/History";
 import Settings from "./pages/Settings";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { SessionContext, useSession } from "./hooks/useSession";
+import "./App.css";
 
 const App = () => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const guestOnly = process.env.REACT_APP_GUEST_DEMO === "true";
+  const { user, status, setUser, checkSession, continueAsGuest, expireSession } = useSession(guestOnly);
   const [initialResetData, setInitialResetData] = useState(null);
+  const sessionContext = useMemo(() => ({ expired: status === "expired", expireSession }), [status, expireSession]);
 
   useEffect(() => {
     // 1. Wykrywanie parametrów resetu w adresie URL
@@ -18,63 +21,58 @@ const App = () => {
     const token = params.get("token");
     const email = params.get("email");
 
-    if (token && email) {
+    if (token && email && !guestOnly) {
       setInitialResetData({ token, email });
     }
 
-    // 2. Sprawdzanie sesji użytkownika
-    const checkAuth = async () => {
-      try {
-        const response = await fetch("http://localhost:5109/api/auth/me", {
-          method: "GET",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data.firstName);
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
-        console.error("Błąd autoryzacji:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
+  }, [guestOnly]);
 
   // Ta funkcja czyści stan i pasek adresu URL
   const handleFinalClose = () => {
+    if (!initialResetData) return;
     setInitialResetData(null);
     // Usuwamy ?token=... z paska adresu, aby Dashboard mógł się odświeżyć
     window.history.replaceState({}, document.title, "/financev2/");
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (status === "checking") return <div className="session-panel" role="status">Checking session…</div>;
+  const ownerKey = user?.id ?? "guest";
 
   return (
+    <SessionContext.Provider value={sessionContext}>
     <Router basename="/financev2">
       <Navbar 
         user={user} 
         setUser={setUser} 
         initialResetData={initialResetData} 
         onCloseReset={handleFinalClose}
+        sessionExpired={status === "expired"}
+        guestOnly={guestOnly}
       />
       <main className="container">
+        {status === "unavailable" ? (
+          <div className="session-panel" role="alert">
+            <h1>Could not verify your session</h1>
+            <p>The server is unavailable or returned an invalid response. Please try again or choose guest mode.</p>
+            <button type="button" onClick={checkSession}>Retry session check</button>
+            <button type="button" onClick={continueAsGuest}>Continue as guest</button>
+          </div>
+        ) : <>
+        {status === "expired" && (
+          <div className="session-panel session-banner" role="alert">
+            <p>Your session has expired. Use Login to sign in again. Account data will not be saved until you sign in.</p>
+            <button type="button" onClick={continueAsGuest}>Continue as guest</button>
+          </div>
+        )}
         <Routes>
-          {/* Klucz key={window.location.search} jest krytyczny - wymusza przeładowanie 
-              Dashboardu, gdy parametry URL znikają po resecie hasła */}
           <Route 
             path="/" 
-            element={<Dashboard user={user} key={window.location.search} />} 
+            element={<Dashboard user={user} key={`${ownerKey}:${initialResetData ? "reset" : "normal"}`} />}
           />
-          <Route path="/history" element={<History user={user} />} />
-          <Route path="/settings" element={<Settings user={user} />} />
+          <Route path="/history" element={<History user={user} key={ownerKey} />} />
+          <Route path="/settings" element={<Settings user={user} key={ownerKey} />} />
         </Routes>
+        </>}
       </main>
 
       <ToastContainer
@@ -83,6 +81,7 @@ const App = () => {
         theme="dark"
       />
     </Router>
+    </SessionContext.Provider>
   );
 };
 

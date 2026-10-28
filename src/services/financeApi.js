@@ -17,7 +17,8 @@ export async function requestApi(path, options = {}) {
       ...options,
       credentials: "include",
     });
-  } catch {
+  } catch (error) {
+    if (error?.name === "AbortError") throw error;
     throw new ApiError("Cannot connect to the server. Check your connection and try again.", 0);
   }
 

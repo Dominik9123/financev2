@@ -17,7 +17,7 @@ using Xunit;
 namespace Backend.Tests;
 
 // Real HTTP, Identity cookies and SQLite; no developer database, SMTP or NBP calls.
-public sealed class ValidationApiFixture : IAsyncLifetime
+public class ValidationApiFixture : IAsyncLifetime
 {
     public const string Password = "TestPass1!";
     public const string UserA = "user-a@example.test";
@@ -54,6 +54,7 @@ public sealed class ValidationApiFixture : IAsyncLifetime
         builder.Services.AddSingleton<CurrencyService>();
         builder.Services.AddSingleton<IEmailSender>(new NoEmailSender());
         builder.Services.AddControllers().AddApplicationPart(typeof(TransactionController).Assembly);
+        ConfigureTestServices(builder);
         _app = builder.Build();
         _app.UseAuthentication();
         _app.UseAuthorization();
@@ -76,6 +77,8 @@ public sealed class ValidationApiFixture : IAsyncLifetime
         await _app.StartAsync();
     }
 
+    protected virtual void ConfigureTestServices(WebApplicationBuilder builder) { }
+
     public HttpClient CreateClient() => new(new HttpClientHandler
     {
         AllowAutoRedirect = false,
@@ -94,6 +97,12 @@ public sealed class ValidationApiFixture : IAsyncLifetime
     {
         await using var scope = _app.Services.CreateAsyncScope();
         return await action(scope.ServiceProvider.GetRequiredService<AppDbContext>());
+    }
+
+    public async Task<T> WithUserManagerAsync<T>(Func<UserManager<User>, Task<T>> action)
+    {
+        await using var scope = _app.Services.CreateAsyncScope();
+        return await action(scope.ServiceProvider.GetRequiredService<UserManager<User>>());
     }
 
     public async Task DisposeAsync()

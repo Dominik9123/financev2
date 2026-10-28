@@ -33,40 +33,23 @@ public class TransactionController : ControllerBase
         return Ok(transactions);
     }
 
-
     [HttpGet("export")]
     public async Task<IActionResult> ExportToCsv()
     {
-        //Pobieranie ID zalogowanego użytkownika z Claimow
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        //Pobieranie tylko transakcji należących do zalogowanego użytkownika
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
         var transactions = await _context.Transactions
-        .Where(t => t.UserId == userId)
-        .OrderByDescending(t => t.Date)
-        .ToListAsync();
+            .Where(transaction => transaction.UserId == userId)
+            .OrderByDescending(transaction => transaction.Date)
+            .ToListAsync();
 
-        //Budowanie zawartosci dla Pliku CSV
-        var csvBuilder = new System.Text.StringBuilder();
-        // Zmieniono na średniki, żeby nagłówek pasował do wierszy poniżej
-        csvBuilder.AppendLine("Date;Title;Amount;Category;Type");
-
-        foreach (var t in transactions)
-        {
-            //Formatowanie daty do czytelnego formatu oraz ze tekst nie ma srednikow
-            var row = $"{t.Date:yyyy-MM-dd};{t.Title.Replace(";", " ")};{t.Amount};{t.Category};{t.Type}";
-            csvBuilder.AppendLine(row);
-        }
-
-        // Kodowanie UTF-8 z BOM zeby polskie znaki dzialaly
-        var encoding = System.Text.Encoding.UTF8;
-        var preamble = encoding.GetPreamble();
-        var content = encoding.GetBytes(csvBuilder.ToString());
-        var fileContent = preamble.Concat(content).ToArray();
-
-        //Zwracanie Pliku do Pobrania
-        return File(fileContent, "text/csv", $"Eksport_{DateTime.Now:yyyyMMdd}.csv");
+        return File(
+            TransactionCsvExporter.Create(transactions),
+            "text/csv; charset=utf-8",
+            $"Eksport_{DateTime.UtcNow:yyyyMMdd}.csv");
     }
 
     [HttpPost]
@@ -147,31 +130,74 @@ public class TransactionController : ControllerBase
     }
 
     [HttpGet("summary")]
-    public async Task<IActionResult> GetSummary([FromQuery] string targetCurrency = "USD")
+    public async Task<IActionResult> GetSummary(
+        [FromQuery] string targetCurrency = "USD")
     {
+        if (!CurrencyService.IsSupported(targetCurrency))
+        {
+            ModelState.AddModelError(
+                nameof(targetCurrency),
+                "Currency must be PLN, USD, EUR, GBP or JPY.");
+
+            return ValidationProblem();
+        }
+
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
 
         var transactions = await _context.Transactions
-            .Where(t => t.UserId == userId)
+            .Where(transaction => transaction.UserId == userId)
             .ToListAsync();
 
-        // Obliczanie sum przychodów i wydatków z konwersją walut
-        decimal totalIncome = transactions
-            .Where(t => t.Type == "Income")
-            .Sum(t => _currencyService.Convert(t.Amount, t.Currency, targetCurrency));
-
-        decimal totalExpense = transactions
-            .Where(t => t.Type == "Expense")
-            .Sum(t => _currencyService.Convert(t.Amount, t.Currency, targetCurrency));
-
-        return Ok(new
+        try
         {
-            TotalIncome = totalIncome,
-            TotalExpense = totalExpense,
-            Balance = totalIncome - totalExpense,
-            Currency = targetCurrency
-        });
+            var needsConversion = transactions.Any(transaction =>
+                (transaction.Type == "Income" || transaction.Type == "Expense") &&
+                transaction.Currency != targetCurrency);
+
+            IReadOnlyDictionary<string, decimal> rates = needsConversion
+                ? await _currencyService.GetRatesAsync()
+                : new Dictionary<string, decimal>();
+
+            var totalIncome = Math.Round(
+                transactions
+                    .Where(transaction => transaction.Type == "Income")
+                    .Sum(transaction => CurrencyService.Convert(
+                        transaction.Amount,
+                        transaction.Currency,
+                        targetCurrency,
+                        rates)),
+                2,
+                MidpointRounding.AwayFromZero);
+
+            var totalExpense = Math.Round(
+                transactions
+                    .Where(transaction => transaction.Type == "Expense")
+                    .Sum(transaction => CurrencyService.Convert(
+                        transaction.Amount,
+                        transaction.Currency,
+                        targetCurrency,
+                        rates)),
+                2,
+                MidpointRounding.AwayFromZero);
+
+            return Ok(new
+            {
+                TotalIncome = totalIncome,
+                TotalExpense = totalExpense,
+                Balance = totalIncome - totalExpense,
+                Currency = targetCurrency
+            });
+        }
+        catch (Exception error) when (error is InvalidOperationException or OverflowException)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "Exchange rates are unavailable.",
+                detail: "Could not calculate the summary. Please try again later.");
+        }
     }
 }
 

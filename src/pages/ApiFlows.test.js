@@ -14,6 +14,7 @@ jest.mock("react-toastify", () => ({
 }));
 
 const originalFetch = global.fetch;
+const account = { id: "user-a", email: "test@example.test", firstName: "User", lastName: "" };
 const response = (data, status = 200) => ({
   ok: status >= 200 && status < 300,
   status,
@@ -47,12 +48,12 @@ afterEach(() => jest.restoreAllMocks());
 afterAll(() => { global.fetch = originalFetch; });
 
 async function openDashboard() {
-  render(<Dashboard user="User" />);
+  render(<Dashboard user={account} />);
   await waitFor(() => expect(screen.getByRole("button", { name: "Add Payout" })).toBeEnabled());
   await waitFor(() => expect(screen.getByRole("button", { name: "Add Expense" })).toBeEnabled());
 }
 
-async function openSettings(user = "User") {
+async function openSettings(user = account) {
   render(<Settings user={user} />);
   await waitFor(() => expect(screen.getByRole("button", { name: /Add Category/ })).toBeEnabled());
 }
@@ -155,7 +156,7 @@ test("invalid expense amounts never reach the API", async () => {
 test.each([Dashboard, History, Settings])("%p does not show guest records after an account read failure", async Page => {
   global.fetch.mockResolvedValue(response(undefined, 401));
   const read = jest.spyOn(Storage.prototype, "getItem");
-  render(<Page user="User" />);
+  render(<Page user={account} />);
   await screen.findAllByText("Your session has expired. Please log in again.");
   expect(screen.queryByText("Guest only")).not.toBeInTheDocument();
   expect(read.mock.calls.flat()).not.toEqual(expect.arrayContaining(["salaries"]));

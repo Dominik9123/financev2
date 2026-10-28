@@ -12,6 +12,8 @@ Aplikacja typu Full-Stack do zarządzania finansami osobistymi z **automatycznym
 Przetestuj aplikację tutaj: [dominik9123.github.io/financev2/](https://dominik9123.github.io/financev2/)
 > **Uwaga**: Wersja demonstracyjna GitHub Pages wspiera wyłącznie **Tryb Gościa** (dane zapisywane lokalnie w przeglądarce). Funkcje konta użytkownika i trwałej bazy danych wymagają uruchomienia backendu lokalnie.
 
+`npm run deploy` buduje demo z ustawieniem `REACT_APP_GUEST_DEMO=true`. Taki build nie sprawdza sesji na lokalnym API i pokazuje oznaczenie „Guest demo”. `npm start` oraz zwykłe `npm run build` zachowują obsługę kont użytkowników.
+
 ### 🚀 Kluczowe Funkcje
 * **Wsparcie Wielu Walut**: Automatyczne pobieranie kursów (USD, EUR, PLN) z Narodowego Banku Polskiego.
 * **Tryb Hybrydowy**: Działa dla **Zalogowanych Użytkowników** (Baza SQLite) oraz dla **Gości** (Local Storage).
@@ -65,6 +67,8 @@ Otwórz aplikację pod adresem [http://localhost:3000/financev2/](http://localho
 
 Jeżeli port `3000` jest zajęty, serwer frontendu może zaproponować port `3001`. Wtedy otwórz [http://localhost:3001/financev2/](http://localhost:3001/financev2/). Backend dopuszcza oba lokalne adresy frontendu w konfiguracji CORS. Backend i frontend muszą działać jednocześnie, aby korzystać z kont użytkowników i danych zapisanych w SQLite.
 
+Link resetujący hasło korzysta z `Frontend:PasswordResetUrl` w `backend/appsettings.Development.json`. Dopasuj go do adresu działającego frontendu: `http://localhost:3000/financev2/` lub `http://localhost:3001/financev2/`. Po zmianie konfiguracji uruchom ponownie backend. Przy wdrożeniu backendu ustaw docelowy adres frontendu przez `Frontend__PasswordResetUrl`.
+
 ### Testy i walidacja
 
 Z katalogu głównego repozytorium:
@@ -79,6 +83,8 @@ Testy backendu uruchamiają rzeczywiste kontrolery HTTP, ASP.NET Core Identity i
 Transakcje wymagają kwoty od `0.01` do `1000000000` z maksymalnie dwoma miejscami po przecinku, obsługiwanej waluty, typu `Income` lub `Expense`, tytułu (do 100 znaków), kategorii (do 25 znaków) i daty. Kategorie są przycinane i sprawdzane pod kątem duplikatów w obrębie konta, bez rozróżniania wielkości liter. Nazwy kategorii domyślnych oraz `Income` i `All` są zarezerwowane.
 
 Rejestracja wymaga imienia i nazwiska (do 50 znaków każde), poprawnego adresu e-mail (do 254 znaków) oraz hasła długości 8–128 znaków z wielką literą, cyfrą i znakiem specjalnym. Te same wymagania hasła obowiązują przy resecie hasła.
+
+Po pięciu kolejnych błędnych hasłach Identity blokuje nowe logowania na konto na pięć minut. Udane logowanie zeruje licznik nieudanych prób. Frontend rozpoznaje konto po ID. Brak sesji (`401`) pozwala uruchomić tryb gościa; błąd serwera lub połączenia pokazuje możliwość ponowienia albo świadomego wyboru trybu gościa. Wygaśnięcie sesji zachowuje formularz dla ponownego logowania na to samo konto i blokuje dalszy zapis.
 
 ### Konfiguracja poczty — lokalny development
 
@@ -114,6 +120,8 @@ A modern full-stack application for managing personal finances with **real-time 
 Check out the live version: [dominik9123.github.io/financev2/](https://dominik9123.github.io/financev2/)
 > **Note**: The GitHub Pages demo supports **Guest Mode only** (LocalStorage). Features like user accounts and a persistent SQL database require running the backend locally.
 
+`npm run deploy` builds with `REACT_APP_GUEST_DEMO=true`, so the published guest demo does not call the local authentication API. Regular development and production builds retain account support. Account identity uses the user ID; server failures do not silently switch to guest data. Identity blocks new sign-ins for five minutes after five consecutive wrong passwords.
+
 ### 🚀 Key Features
 * **Multi-Currency Support**: Automatically fetch exchange rates (USD, EUR, PLN) from the National Bank of Poland.
 * **Dual Mode**: Use the app as a **Logged-in User** (SQLite DB) or as a **Guest** (Local Storage).
@@ -130,6 +138,8 @@ Check out the live version: [dominik9123.github.io/financev2/](https://dominik91
    - Navigate to `backend`, run `dotnet restore` and `dotnet run`.
 2. **Frontend**:
    - Navigate to `frontend`, run `npm install` and `npm start`.
+
+Password reset links use `Frontend:PasswordResetUrl` from `backend/appsettings.Development.json`. Match its port to the running frontend (3000 or 3001). For a hosted backend, configure the frontend URL with `Frontend__PasswordResetUrl`.
 
 ### Tests
 

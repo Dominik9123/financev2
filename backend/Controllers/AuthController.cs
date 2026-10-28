@@ -4,6 +4,8 @@ using backend.Models;
 using backend.Models.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using backend.Services; // Dodane dla IEmailSender
+using Microsoft.AspNetCore.WebUtilities;
+using System.Text.Encodings.Web;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -12,13 +14,19 @@ public class AuthController : ControllerBase
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
     private readonly IEmailSender _emailSender; // Nowe pole
+    private readonly IConfiguration _configuration;
 
     // Zaktualizowany konstruktor
-    public AuthController(UserManager<User> userManager, SignInManager<User> signInManager, IEmailSender emailSender)
+    public AuthController(
+        UserManager<User> userManager,
+        SignInManager<User> signInManager,
+        IEmailSender emailSender,
+        IConfiguration configuration)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _emailSender = emailSender;
+        _configuration = configuration;
     }
 
     [HttpPost("register")]
@@ -44,7 +52,7 @@ public class AuthController : ControllerBase
         if (user == null)
             return Unauthorized(new { message = "Niepoprawne dane!" });
 
-        var result = await _signInManager.CheckPasswordSignInAsync(user, dto.Password, false);
+        var result = await _signInManager.CheckPasswordSignInAsync(user, dto.Password, lockoutOnFailure: true);
         if (!result.Succeeded)
             return Unauthorized(new { message = "Niepoprawne dane!" });
 
@@ -53,8 +61,11 @@ public class AuthController : ControllerBase
         return Ok(new
         {
             message = "Login successful",
+            id = user.Id,
+            email = user.Email,
             username = user.UserName,
-            firstName = user.FirstName
+            firstName = user.FirstName ?? string.Empty,
+            lastName = user.LastName ?? string.Empty
         });
     }
 
@@ -74,9 +85,11 @@ public class AuthController : ControllerBase
 
         return Ok(new
         {
+            id = user.Id,
+            email = user.Email,
             username = user.UserName,
-            firstName = user.FirstName,
-            lastName = user.LastName
+            firstName = user.FirstName ?? string.Empty,
+            lastName = user.LastName ?? string.Empty
         });
     }
 
@@ -85,37 +98,81 @@ public class AuthController : ControllerBase
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
     {
+        const string resetRequestMessage =
+            "If an account with this email exists, reset instructions have been sent.";
+
         var user = await _userManager.FindByEmailAsync(dto.Email);
 
         // Zwracamy Ok nawet jeśli użytkownik nie istnieje (ochrona przed wyciekiem adresów e-mail)
         if (user == null)
-            return Ok(new { message = "If the email is correct, a reset link has been sent." });
+            return Ok(new { message = resetRequestMessage });
 
         // Generowanie tokenu przez ASP.NET Core Identity
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
         // Przygotowanie linku do Frontendu (React)
-        var resetLink = $"http://localhost:3000/financev2/reset-password?token={Uri.EscapeDataString(token)}&email={user.Email}";
+        var resetUrl = _configuration["Frontend:PasswordResetUrl"]
+            ?? throw new InvalidOperationException(
+                "Frontend:PasswordResetUrl is not configured.");
+
+        var resetLink = QueryHelpers.AddQueryString(
+            resetUrl,
+            new Dictionary<string, string?>
+            {
+                ["token"] = token,
+                ["email"] = user.Email
+            });
+
+        var safeResetLink = HtmlEncoder.Default.Encode(resetLink);
 
         // Wysłanie maila przez Mailtrap
-        await _emailSender.SendEmailAsync(user.Email!, "Reset Password - Finance Tracker",
-            $"<h2>Reset Your Password</h2><p>Click the link below to set a new password:</p><a href='{resetLink}'>Reset Password</a>");
+        await _emailSender.SendEmailAsync(
+            user.Email!,
+            "Reset Password - Finance Tracker",
+            $"<h2>Reset Your Password</h2>" +
+            $"<p>Click the link below to set a new password:</p>" +
+            $"<a href='{safeResetLink}'>Reset Password</a>");
 
-        return Ok(new { message = "Reset link sent successfully" });
+        return Ok(new { message = resetRequestMessage });
     }
 
     [HttpPost("reset-password")]
-    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordConfirmDto dto)
+    public async Task<IActionResult> ResetPassword(
+        [FromBody] ResetPasswordConfirmDto dto)
     {
+        const string invalidLinkMessage =
+            "This reset link is invalid, expired or has already been used. Request a new link.";
+
         var user = await _userManager.FindByEmailAsync(dto.Email);
-        if (user == null) return BadRequest("Invalid request");
 
-        // Walidacja tokenu i zmiana hasła w bazie SQLite
-        var result = await _userManager.ResetPasswordAsync(user, dto.Token, dto.NewPassword);
+        if (user == null)
+        {
+            ModelState.AddModelError(nameof(dto.Token), invalidLinkMessage);
+            return ValidationProblem();
+        }
 
-        if (result.Succeeded)
-            return Ok(new { message = "Password has been reset successfully" });
+        var result = await _userManager.ResetPasswordAsync(
+            user, dto.Token, dto.NewPassword);
 
-        return BadRequest(result.Errors);
+        if (!result.Succeeded)
+        {
+            foreach (var error in result.Errors)
+            {
+                if (error.Code == "InvalidToken")
+                {
+                    ModelState.AddModelError(
+                        nameof(dto.Token), invalidLinkMessage);
+                }
+                else
+                {
+                    ModelState.AddModelError(
+                        nameof(dto.NewPassword), error.Description);
+                }
+            }
+
+            return ValidationProblem();
+        }
+
+        return Ok(new { message = "Password has been reset successfully" });
     }
 }

@@ -28,7 +28,7 @@ const storedData = {
 const originalFetch = global.fetch;
 
 function SessionHarness() {
-  const [user, setUser] = useState("Test User");
+  const [user, setUser] = useState({ id: "user-a", email: "test@example.test", firstName: "Test User", lastName: "" });
   return <Navbar user={user} setUser={setUser} />;
 }
 
@@ -125,5 +125,19 @@ test("guest mode starts only after the server confirms logout", async () => {
 
   expect(screen.getByText("Login")).toBeInTheDocument();
   expect(screen.queryByText("Test User")).not.toBeInTheDocument();
+  expectStoredDataUnchanged();
+});
+
+test("a pending logout cannot be submitted twice", async () => {
+  let finish;
+  global.fetch.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  render(<SessionHarness />);
+  const button = screen.getByRole("button", { name: "Logout" });
+  fireEvent.click(button);
+  fireEvent.click(button);
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+  expect(button).toBeDisabled();
+  await act(async () => finish({ ok: false, status: 500 }));
+  await waitFor(() => expect(button).toBeEnabled());
   expectStoredDataUnchanged();
 });
