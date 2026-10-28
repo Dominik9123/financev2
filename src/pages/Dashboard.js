@@ -1,9 +1,13 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Bar, Line } from "react-chartjs-2";
 import ChartsRow from "../components/ChartsRow";
 import "../components/ChartsRow.scss";
 import { convertCurrency } from "../utils/convertCurrency";
 import { fetchCurrencyRates } from "../services/currencyService";
+import { toast } from "react-toastify";
+import { apiErrorMessage, postJson } from "../services/financeApi";
+import { readStoredArray, useCategories, useTransactions } from "../hooks/useFinanceData";
+import { categoryExists, defaultCategoryNames, isValidAmount } from "../utils/validation";
 
 import {
   Chart as ChartJS,
@@ -30,29 +34,28 @@ ChartJS.register(
   ArcElement, Tooltip, Legend, Title
 );
 
-const categories = [
-  { name: "Housing", icon: <FaHome /> },
-  { name: "Food", icon: <FaUtensils /> },
-  { name: "Transport", icon: <FaCar /> },
-  { name: "Entertainment", icon: <FaTheaterMasks /> },
-  { name: "Shopping", icon: <FaShoppingCart /> },
-  { name: "HealthCare", icon: <FaBriefcaseMedical /> },
-  { name: "Travel", icon: <FaPlane /> },
-  { name: "Savings", icon: <FaChartLine /> },
-  { name: "Education", icon: <FaBook /> },
-  { name: "Debt's", icon: <FaMoneyBillWave /> },
-];
+const categoryIcons = {
+  Housing: FaHome, Food: FaUtensils, Transport: FaCar,
+  Entertainment: FaTheaterMasks, Shopping: FaShoppingCart,
+  HealthCare: FaBriefcaseMedical, Travel: FaPlane, Savings: FaChartLine,
+  Education: FaBook, "Debt's": FaMoneyBillWave,
+};
+const categories = defaultCategoryNames.map(name => ({ name, icon: React.createElement(categoryIcons[name]) }));
 
 const Dashboard = ({ user }) => {
   const [salary, setSalary] = useState("");
   const [date, setDate] = useState("");
-  const [salaries, setSalaries] = useState([]);
   const [currency, setCurrency] = useState("USD ($)");
   const [expenses, setExpenses] = useState({});
-  const [expenseList, setExpenseList] = useState([]);
-  const [customCategories, setCustomCategories] = useState([]);
-  
-  // Stan dla podsumowania z API (zalogowany) i kursów NBP (gość)
+  const transactions = useTransactions(user);
+  const categoryData = useCategories(user);
+  const salaries = useMemo(() => transactions.data.filter(t => t.type === "Income"), [transactions.data]);
+  const expenseList = useMemo(() => transactions.data.filter(t => t.type === "Expense"), [transactions.data]);
+  const customCategories = categoryData.data;
+  const saving = useRef(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Kursy walut są wspólne dla konta i trybu gościa.
   const [localRates, setLocalRates] = useState({ PLN: 1 });
   const [ratesLoading, setRatesLoading] = useState(true);
   const [ratesError, setRatesError] = useState("");
@@ -78,49 +81,6 @@ const fetchNBPRates = useCallback(async () => {
 }, []);
 
 
-  const fetchTransactions = useCallback(async () => {
-    if (user) {
-      try {
-        const response = await fetch("http://localhost:5109/api/transaction", {
-          method: "GET",
-          credentials: "include",
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setSalaries(data.filter(t => t.type === "Income"));
-          setExpenseList(data.filter(t => t.type === "Expense"));
-          return;
-        }
-      } catch (error) {
-        console.error("Błąd API transakcji:", error);
-      }
-    }
-    
-    // Tryb Gość
-    const savedSalaries = JSON.parse(localStorage.getItem("salaries") || "[]").map(t => ({...t, currency: t.currency || "USD"}));
-    const savedExpenses = JSON.parse(localStorage.getItem("expenses") || "[]").map(t => ({...t, currency: t.currency || "USD"}));
-    setSalaries(savedSalaries);
-    setExpenseList(savedExpenses);
-}, [user]);
-
-  const fetchCategories = useCallback(async () => {
-    if (user) {
-      try {
-        const response = await fetch("http://localhost:5109/api/category", {
-          method: "GET",
-          credentials: "include",
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setCustomCategories(data);
-          return;
-        }
-      } catch (error) {}
-    }
-    const saved = JSON.parse(localStorage.getItem("customCategories") || "[]");
-    setCustomCategories(saved);
-  }, [user]);
-
    useEffect(() => {
     fetchNBPRates();
   }, [fetchNBPRates]);
@@ -128,9 +88,7 @@ const fetchNBPRates = useCallback(async () => {
 useEffect(() => {
   const savedCurrency = localStorage.getItem("currency") || "USD ($)";
   setCurrency(savedCurrency);
-  fetchTransactions();
-  fetchCategories();
-}, [user, fetchTransactions, fetchCategories]);
+}, [user]);
 
   // --- UNIWERSALNA LOGIKA PRZELICZANIA (GOŚĆ + ZALOGOWANY) ---
   const conversion = useMemo(() => {
@@ -191,7 +149,11 @@ useEffect(() => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!salary || !date) return;
+    if (saving.current) return;
+    if (!isValidAmount(salary) || !date || Number.isNaN(new Date(date).getTime()) || date === "0001-01-01") {
+      toast.error("Enter an amount between 0.01 and 1,000,000,000 with at most two decimal places, and a valid date.");
+      return;
+    }
 
     const newTransaction = {
       title: "Salary Payout",
@@ -202,29 +164,33 @@ useEffect(() => {
       date: new Date(date).toISOString()
     };
 
-    if (user) {
-      try {
-        await fetch("http://localhost:5109/api/transaction", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newTransaction),
-          credentials: "include"
-        });
-      } catch (error) {}
-    } else {
-      const updated = [...salaries, { ...newTransaction, date: date }];
-      localStorage.setItem("salaries", JSON.stringify(updated));
+    saving.current = true;
+    setIsSaving(true);
+    try {
+      if (user) {
+        await postJson("/transaction", newTransaction);
+      } else {
+        const updated = [...readStoredArray("salaries"), { ...newTransaction, date }];
+        localStorage.setItem("salaries", JSON.stringify(updated));
+      }
+      setSalary("");
+      setDate("");
+      toast.success("Income saved successfully.");
+      await transactions.reload();
+    } catch (error) {
+      const message = apiErrorMessage(error, "Could not save income. Your form has been preserved.");
+      toast.error(error.status === 0 ? `${message} Check history before retrying to avoid a duplicate.` : message);
+    } finally {
+      saving.current = false;
+      setIsSaving(false);
     }
-
-    setSalary("");
-    setDate("");
-    fetchTransactions();
   };
 
   const handleExpenseSubmit = async () => {
+    if (saving.current) return;
     const currencyCode = getCurrencyCode();
     const newExpenses = Object.entries(expenses)
-      .filter(([_, amount]) => amount)
+      .filter(([_, amount]) => amount !== "")
       .map(([category, amount]) => ({
         title: `Expense: ${category}`,
         category,
@@ -234,23 +200,41 @@ useEffect(() => {
         date: new Date().toISOString()
       }));
 
-    if (user) {
-      for (const item of newExpenses) {
-        await fetch("http://localhost:5109/api/transaction", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(item),
-          credentials: "include"
-        });
-      }
-    } else {
-      const currentLocal = JSON.parse(localStorage.getItem("expenses") || "[]");
-      const updated = [...currentLocal, ...newExpenses];
-      localStorage.setItem("expenses", JSON.stringify(updated));
+    if (newExpenses.length === 0 || newExpenses.some(item => !isValidAmount(item.amount))) {
+      toast.error("Enter an amount between 0.01 and 1,000,000,000 with at most two decimal places for each expense.");
+      return;
     }
 
-    setExpenses({});
-    fetchTransactions();
+    saving.current = true;
+    setIsSaving(true);
+    let savedCount = 0;
+    try {
+      if (user) {
+        for (const item of newExpenses) {
+          await postJson("/transaction", item);
+          savedCount += 1;
+          // Clear only confirmed entries so retrying a partial batch cannot resend them.
+          setExpenses(previous => {
+            const remaining = { ...previous };
+            delete remaining[item.category];
+            return remaining;
+          });
+        }
+      } else {
+        const updated = [...readStoredArray("expenses"), ...newExpenses];
+        localStorage.setItem("expenses", JSON.stringify(updated));
+        savedCount = newExpenses.length;
+        setExpenses({});
+      }
+      toast.success("Expenses saved successfully.");
+    } catch (error) {
+      const detail = apiErrorMessage(error, "Could not save all expenses.");
+      toast.error(`${savedCount ? `${savedCount} expense(s) saved. ` : ""}${detail} Unconfirmed amounts remain in the form. Check history before retrying.`);
+    } finally {
+      if (savedCount > 0) await transactions.reload();
+      saving.current = false;
+      setIsSaving(false);
+    }
   };
 
   const handleExpenseChange = (category, amount) => {
@@ -317,13 +301,27 @@ if (ratesError) {
   return (
     <div className="dashboard">
       <h1 className="outlined-text">Dashboard</h1>
+      {transactions.loading && <p role="status">Loading transactions…</p>}
+      {transactions.error && (
+        <div role="alert">
+          <p>{transactions.error}</p>
+          <button type="button" onClick={transactions.reload}>Retry transactions</button>
+        </div>
+      )}
+      {categoryData.error && (
+        <div role="alert">
+          <p>{categoryData.error}</p>
+          <button type="button" onClick={categoryData.reload}>Retry categories</button>
+        </div>
+      )}
       <form onSubmit={handleSubmit}>
         <label className="label-text">Salary Amount:</label>
-        <input type="number" value={salary} onChange={(e) => setSalary(e.target.value)} placeholder="Enter Amount:" required min="0" />
+        <input aria-label="Salary amount" type="number" value={salary} onChange={(e) => setSalary(e.target.value)} placeholder="Enter Amount:" required min="0.01" max="1000000000" step="0.01" disabled={isSaving} />
         <label className="label-text">Date:</label>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-        <button type="submit" className="button-payout">Add Payout</button>
+        <input aria-label="Income date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required disabled={isSaving} />
+        <button type="submit" className="button-payout" disabled={isSaving || transactions.loading || !!transactions.error}>Add Payout</button>
       </form>
+      {!transactions.loading && !transactions.error && <>
       <div className="balance-wrapper">
         <div className="balance-container">
           <h3>Total Balance 💵</h3>
@@ -347,19 +345,20 @@ if (ratesError) {
         totalIncome={conversion.totalIncome} 
         totalExpense={conversion.totalExpense} 
       />
+      </>}
       
       <h2 className="outlined-text expense-title">Add Expense</h2>
       <div className="expense-grid">
-        {categories.concat(customCategories).map(({ name, icon }) => (
+        {categories.concat(customCategories.filter(category => !categoryExists(category.name, []))).map(({ name, icon }) => (
           <div key={name} className="expense-tile">
             <div className="expense-icon">{icon ? icon : <FaFolderOpen />}</div>
             <span>{name}</span>
-            <input type="number" value={expenses[name] || ""} onChange={(e) => handleExpenseChange(name, e.target.value)} placeholder="Amount :" min="0" />
+            <input aria-label={`${name} amount`} type="number" value={expenses[name] || ""} onChange={(e) => handleExpenseChange(name, e.target.value)} placeholder="Amount :" min="0.01" max="1000000000" step="0.01" disabled={isSaving} />
           </div>
         ))}
       </div>
-      <button className="expense-submit-button" onClick={handleExpenseSubmit}>Add Expense</button>
-      <div className="chart-container" style={{ height: '400px' }}><Bar data={barExpenseData} options={{ indexAxis: 'y', responsive: true, maintainAspectRatio: false }} /></div>
+      <button className="expense-submit-button" onClick={handleExpenseSubmit} disabled={isSaving || transactions.loading || !!transactions.error || categoryData.loading || !!categoryData.error}>Add Expense</button>
+      {!transactions.loading && !transactions.error && <div className="chart-container" style={{ height: '400px' }}><Bar data={barExpenseData} options={{ indexAxis: 'y', responsive: true, maintainAspectRatio: false }} /></div>}
     </div>
   );
 };

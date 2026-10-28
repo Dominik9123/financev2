@@ -28,8 +28,8 @@ public class AuthController : ControllerBase
         {
             UserName = dto.Email,
             Email = dto.Email,
-            FirstName = dto.FirstName,
-            LastName = dto.LastName
+            FirstName = dto.FirstName.Trim(),
+            LastName = dto.LastName.Trim()
         };
         var result = await _userManager.CreateAsync(user, dto.Password);
 
@@ -40,7 +40,7 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {
-        var user = await _userManager.FindByEmailAsync(dto.Email);
+        var user = await _userManager.FindByEmailAsync(dto.Email.Trim());
         if (user == null)
             return Unauthorized(new { message = "Niepoprawne dane!" });
 
@@ -98,7 +98,7 @@ public class AuthController : ControllerBase
         var resetLink = $"http://localhost:3000/financev2/reset-password?token={Uri.EscapeDataString(token)}&email={user.Email}";
 
         // Wysłanie maila przez Mailtrap
-        await _emailSender.SendEmailAsync(user.Email, "Reset Password - Finance Tracker",
+        await _emailSender.SendEmailAsync(user.Email!, "Reset Password - Finance Tracker",
             $"<h2>Reset Your Password</h2><p>Click the link below to set a new password:</p><a href='{resetLink}'>Reset Password</a>");
 
         return Ok(new { message = "Reset link sent successfully" });

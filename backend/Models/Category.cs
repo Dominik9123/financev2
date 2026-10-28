@@ -17,6 +17,14 @@ namespace backend.Models
     // DTO do odbierania danych z frontendu
     public class CategoryDto
     {
-        public string Name { get; set; } = string.Empty;
+        private string _name = string.Empty;
+
+        [Required(ErrorMessage = "Category name is required.")]
+        [StringLength(25, ErrorMessage = "Category name cannot exceed 25 characters.")]
+        public string Name
+        {
+            get => _name;
+            set => _name = value?.Trim() ?? string.Empty;
+        }
     }
 }

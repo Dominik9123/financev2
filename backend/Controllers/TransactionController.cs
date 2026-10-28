@@ -5,6 +5,7 @@ using backend.Data;
 using backend.Models;
 using backend.Services;
 using System.Security.Claims;
+using System.ComponentModel.DataAnnotations;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -77,12 +78,12 @@ public class TransactionController : ControllerBase
         var transaction = new Transaction
         {
             UserId = userId,
-            Title = string.IsNullOrEmpty(dto.Title) ? "New Transaction" : dto.Title,
+            Title = dto.Title.Trim(),
             Amount = dto.Amount,
             Currency = dto.Currency,
-            Category = dto.Category,
+            Category = dto.Category.Trim(),
             Type = dto.Type,
-            Date = dto.Date == default ? DateTime.UtcNow : dto.Date
+            Date = dto.Date!.Value
         };
 
         _context.Transactions.Add(transaction);
@@ -99,12 +100,12 @@ public class TransactionController : ControllerBase
         if (transaction.UserId != User.FindFirstValue(ClaimTypes.NameIdentifier))
             return Unauthorized();
 
-        transaction.Title = updated.Title;
         transaction.Amount = updated.Amount;
         transaction.Currency = updated.Currency;
-        transaction.Category = updated.Category;
         transaction.Type = updated.Type;
-        transaction.Date = updated.Date;
+        transaction.Title = updated.Title.Trim();
+        transaction.Category = updated.Category.Trim();
+        transaction.Date = updated.Date!.Value;
 
         await _context.SaveChangesAsync();
         return Ok(transaction);
@@ -174,12 +175,59 @@ public class TransactionController : ControllerBase
     }
 }
 
-public class TransactionDto
+public class TransactionDto : IValidatableObject
 {
+    [Required(ErrorMessage = "Title is required.")]
+    [StringLength(100, ErrorMessage = "Title cannot exceed 100 characters.")]
     public string Title { get; set; } = string.Empty;
+
+    [Range(
+        typeof(decimal),
+        "0.01",
+        "1000000000",
+        ParseLimitsInInvariantCulture = true,
+        ErrorMessage = "Amount must be between 0.01 and 1,000,000,000."
+    )]
     public decimal Amount { get; set; }
-    public string Currency { get; set; } = "USD";
+
+    [Required(ErrorMessage = "Currency is required.")]
+    [RegularExpression(
+        "^(PLN|USD|EUR|GBP|JPY)$",
+        ErrorMessage = "Currency must be PLN, USD, EUR, GBP or JPY."
+    )]
+    public string Currency { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Category is required.")]
+    [StringLength(25, ErrorMessage = "Category cannot exceed 25 characters.")]
     public string Category { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Transaction type is required.")]
+    [RegularExpression(
+        "^(Income|Expense)$",
+        ErrorMessage = "Transaction type must be Income or Expense."
+    )]
     public string Type { get; set; } = string.Empty;
-    public DateTime Date { get; set; }
+
+    [Required(ErrorMessage = "Date is required.")]
+    public DateTime? Date { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(
+        ValidationContext validationContext)
+    {
+        if (Amount != decimal.Round(Amount, 2))
+        {
+            yield return new ValidationResult(
+                "Amount can have at most two decimal places.",
+                new[] { nameof(Amount) }
+            );
+        }
+
+        if (Date == DateTime.MinValue)
+        {
+            yield return new ValidationResult(
+                "Date must be a valid transaction date.",
+                new[] { nameof(Date) }
+            );
+        }
+    }
 }

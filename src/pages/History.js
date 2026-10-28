@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { fetchCurrencyRates } from "../services/currencyService";
 import { convertCurrency } from "../utils/convertCurrency";
+import { useTransactions } from "../hooks/useFinanceData";
 import "./History.css";
 
 const History = ({ user }) => {
-  const [transactions, setTransactions] = useState([]);
+  const transactionData = useTransactions(user);
+  const transactions = useMemo(() => [...transactionData.data]
+    .sort((a, b) => new Date(b.date) - new Date(a.date)), [transactionData.data]);
   const [currency, setCurrency] = useState("USD ($)");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [startDate, setStartDate] = useState("");
@@ -36,39 +39,10 @@ useEffect(() => {
   fetchNBPRates();
 }, [fetchNBPRates]);
 
-  const fetchHistory = useCallback(async () => {
-    if (user) {
-      try {
-        const response = await fetch("http://localhost:5109/api/transaction", {
-          method: "GET",
-          credentials: "include",
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setTransactions(data.sort((a, b) => new Date(b.date) - new Date(a.date)));
-          return;
-        }
-      } catch (error) {
-        console.error("Błąd API transakcji:", error);
-      }
-    }
-
-    // Tryb Gość: Pobierz z localStorage i dodaj pole currency jeśli go nie ma
-    const localSalaries = JSON.parse(localStorage.getItem("salaries") || "[]").map(t => ({ 
-      ...t, type: "Income", category: "Income", currency: t.currency || "USD" 
-    }));
-    const localExpenses = JSON.parse(localStorage.getItem("expenses") || "[]").map(t => ({ 
-      ...t, type: "Expense", currency: t.currency || "USD" 
-    }));
-    
-    setTransactions([...localSalaries, ...localExpenses].sort((a, b) => new Date(b.date) - new Date(a.date)));
-  }, [user]);
-
   useEffect(() => {
     const savedCurrency = localStorage.getItem("currency") || "USD ($)";
     setCurrency(savedCurrency);
-    fetchHistory();
-  }, [user, fetchHistory]);
+  }, [user]);
 
   // --- UNIWERSALNA LOGIKA KURSÓW ---
 const conversion = useMemo(() => {
@@ -107,6 +81,19 @@ const conversion = useMemo(() => {
     };
   }
 }, [transactions, currency, localRates, ratesLoading, ratesError]);
+
+if (transactionData.loading) {
+  return <div className="history-container"><p role="status">Loading transactions…</p></div>;
+}
+
+if (transactionData.error) {
+  return (
+    <div className="history-container">
+      <p role="alert">{transactionData.error}</p>
+      <button type="button" onClick={transactionData.reload}>Retry transactions</button>
+    </div>
+  );
+}
 
 if (ratesLoading) {
   return (
@@ -149,7 +136,6 @@ if (conversion.error) {
   return (  
     <div className="history-container">
       <h1 className="outlined-text">Transaction History</h1>
-      {/* ... (sekcja filtrów bez zmian) ... */}
       <div className="filters">
         <label>Category:</label>
         <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
@@ -167,6 +153,7 @@ if (conversion.error) {
         <input type="number" value={maxAmount} onChange={(e) => setMaxAmount(e.target.value)} placeholder="Max" />
       </div>
 
+      {filteredTransactions.length === 0 && <p>No transactions match your filters.</p>}
       <ul className="transaction-history-list">
         {filteredTransactions.map((t, i) => (
           <li key={t.id || i} className={`transaction-item ${t.type.toLowerCase()}`}>

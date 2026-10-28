@@ -29,18 +29,15 @@ const Navbar = ({ user, setUser, initialResetData, onCloseReset }) => {
       });
 
       if (response.ok) {
-        localStorage.clear();
         setUser(null);
         toast.info("Logged out successfully. See you soon!");
         navigate("/");
       } else {
-        toast.error("Logout failed on server.");
+        toast.error("Could not log out. Please try again.");
       }
     } catch (error) {
       console.error("Błąd podczas wylogowywania:", error);
-      toast.error("Connection error during logout.");
-      localStorage.clear();
-      setUser(null);
+      toast.error("Could not confirm logout. Check your connection and try again.");
     }
   };
 

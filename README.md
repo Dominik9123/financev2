@@ -65,6 +65,21 @@ Otwórz aplikację pod adresem [http://localhost:3000/financev2/](http://localho
 
 Jeżeli port `3000` jest zajęty, serwer frontendu może zaproponować port `3001`. Wtedy otwórz [http://localhost:3001/financev2/](http://localhost:3001/financev2/). Backend dopuszcza oba lokalne adresy frontendu w konfiguracji CORS. Backend i frontend muszą działać jednocześnie, aby korzystać z kont użytkowników i danych zapisanych w SQLite.
 
+### Testy i walidacja
+
+Z katalogu głównego repozytorium:
+
+```powershell
+npm test -- --watchAll=false --runInBand
+dotnet test backend.Tests/backend.Tests.csproj -p:UseAppHost=false -p:BaseOutputPath=bin/validation-tests/
+```
+
+Testy backendu uruchamiają rzeczywiste kontrolery HTTP, ASP.NET Core Identity i osobną, tymczasową bazę SQLite. Nie korzystają z `backend/financev2.db`, SMTP ani NBP. Osobny katalog wynikowy pozwala uruchamiać je przy działającym lokalnym backendzie.
+
+Transakcje wymagają kwoty od `0.01` do `1000000000` z maksymalnie dwoma miejscami po przecinku, obsługiwanej waluty, typu `Income` lub `Expense`, tytułu (do 100 znaków), kategorii (do 25 znaków) i daty. Kategorie są przycinane i sprawdzane pod kątem duplikatów w obrębie konta, bez rozróżniania wielkości liter. Nazwy kategorii domyślnych oraz `Income` i `All` są zarezerwowane.
+
+Rejestracja wymaga imienia i nazwiska (do 50 znaków każde), poprawnego adresu e-mail (do 254 znaków) oraz hasła długości 8–128 znaków z wielką literą, cyfrą i znakiem specjalnym. Te same wymagania hasła obowiązują przy resecie hasła.
+
 ### Konfiguracja poczty — lokalny development
 
 Reset hasła używa Mailtrap Email Sandbox. Wiadomości trafiają do sandboxa w Mailtrap, nie do rzeczywistej skrzynki odbiorcy.
@@ -115,6 +130,17 @@ Check out the live version: [dominik9123.github.io/financev2/](https://dominik91
    - Navigate to `backend`, run `dotnet restore` and `dotnet run`.
 2. **Frontend**:
    - Navigate to `frontend`, run `npm install` and `npm start`.
+
+### Tests
+
+Run from the repository root:
+
+```powershell
+npm test -- --watchAll=false --runInBand
+dotnet test backend.Tests/backend.Tests.csproj -p:UseAppHost=false -p:BaseOutputPath=bin/validation-tests/
+```
+
+Backend tests use real HTTP controllers, Identity cookies and a temporary SQLite database. They do not access the development database, SMTP or NBP. New and reset passwords require 8–128 characters, an uppercase letter, a digit and a special character. Transaction amounts support up to two decimal places; custom category names are unique per account, ignoring case and surrounding whitespace.
 
 ### Email configuration — local development
 

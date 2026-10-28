@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import { FaEye, FaEyeSlash, FaExclamationTriangle } from "react-icons/fa";
 import "./LoginModal.scss";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
+import { apiErrorMessage, postJson } from "../services/financeApi";
+import { getPasswordRequirements, isValidPassword } from "../utils/validation";
 
 export default function LoginModal({ onClose, onReset, setUser, initialResetData }) {
-  const navigate = useNavigate();
   // Jeśli mamy dane resetu, startujemy od widoku "setNewPassword"
   const [view, setView] = useState(initialResetData ? "setNewPassword" : "login");
   
@@ -27,14 +27,6 @@ export default function LoginModal({ onClose, onReset, setUser, initialResetData
   const handleKeyUp = (e) => {
     setIsCapsLockOn(e.getModifierState("CapsLock"));
   };
-
-  // Logika sprawdzania wymagań dla widoku rejestracji i resetu
-  const getPasswordRequirements = (pwd) => ({
-    length: pwd.length >= 8,
-    uppercase: /[A-Z]/.test(pwd),
-    number: /[0-9]/.test(pwd),
-    special: /[!@#$%^&*]/.test(pwd),
-  });
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -67,22 +59,25 @@ export default function LoginModal({ onClose, onReset, setUser, initialResetData
       return;
     }
 
-    try {
-      const response = await fetch("http://localhost:5109/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName, lastName, email: regEmail, password: regPassword })
-      });
+    if (!firstName.trim() || !lastName.trim() || firstName.length > 50 || lastName.length > 50) {
+      toast.warning("Enter a first and last name, each up to 50 characters.");
+      return;
+    }
+    if (!isValidPassword(regPassword)) {
+      toast.warning("Password must contain 8–128 characters, an uppercase letter, a digit and a special character.");
+      return;
+    }
 
-      if (!response.ok) {
-        toast.error("Registration failed!");
-        return;
-      }
+    try {
+      await postJson("/auth/register", {
+        firstName: firstName.trim(), lastName: lastName.trim(),
+        email: regEmail.trim(), password: regPassword,
+      });
 
       toast.info("Account created! You can now log in.");
       setView("login");
     } catch (error) {
-      toast.error("Server is not responding.");
+      toast.error(apiErrorMessage(error, "Registration failed. Please try again."));
     }
   };
 
@@ -90,6 +85,10 @@ export default function LoginModal({ onClose, onReset, setUser, initialResetData
     e.preventDefault();
     if (password !== confirmPassword) {
       toast.warning("Passwords do not match!");
+      return;
+    }
+    if (!isValidPassword(password)) {
+      toast.warning("Password must contain 8–128 characters, an uppercase letter, a digit and a special character.");
       return;
     }
 
@@ -158,25 +157,25 @@ export default function LoginModal({ onClose, onReset, setUser, initialResetData
 
         {/* --- WIDOK: REJESTRACJA --- */}
         {view === "register" && (
-          <form onSubmit={handleRegister}>
+          <form onSubmit={handleRegister} aria-label="Registration">
             <h2 className="text-xl font-semibold mb-4">Create an Account</h2>
-            <input type="text" placeholder="First Name" className="login-modal-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
-            <input type="text" placeholder="Last Name" className="login-modal-input" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
-            <input type="email" placeholder="E-mail" className="login-modal-input" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} required />
+            <input type="text" placeholder="First Name" className="login-modal-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} maxLength={50} required />
+            <input type="text" placeholder="Last Name" className="login-modal-input" value={lastName} onChange={(e) => setLastName(e.target.value)} maxLength={50} required />
+            <input type="email" placeholder="E-mail" className="login-modal-input" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} maxLength={254} required />
             <div className="password-container">
-              <input type={showPassword ? "text" : "password"} placeholder="Password" className="login-modal-input" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} onKeyUp={handleKeyUp} required />
+              <input type={showPassword ? "text" : "password"} placeholder="Password" className="login-modal-input" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} onKeyUp={handleKeyUp} minLength={8} maxLength={128} required />
               <span className="password-icon" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <FaEyeSlash /> : <FaEye />}</span>
               <div className="password-tooltip">
                 <p>Requirements:</p>
                 <ul>
-                  <li className={regReqs.length ? "valid" : ""}>Min. 8 chars</li>
+                  <li className={regReqs.length ? "valid" : ""}>8–128 chars</li>
                   <li className={regReqs.uppercase ? "valid" : ""}>Uppercase</li>
                   <li className={regReqs.number ? "valid" : ""}>Number</li>
-                  <li className={regReqs.special ? "valid" : ""}>Special (!@#)</li>
+                  <li className={regReqs.special ? "valid" : ""}>Special character</li>
                 </ul>
               </div>
             </div>
-            <input type="password" placeholder="Confirm Password" className="login-modal-input" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+            <input type="password" placeholder="Confirm Password" className="login-modal-input" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} minLength={8} maxLength={128} required />
             <button className="login-modal-btn">Register</button>
             <button type="button" className="login-modal-btn mt-2" onClick={() => setView("login")}>Back to Login</button>
           </form>
@@ -184,7 +183,7 @@ export default function LoginModal({ onClose, onReset, setUser, initialResetData
 
         {/* --- WIDOK: USTAWIANIE NOWEGO HASŁA --- */}
         {view === "setNewPassword" && (
-          <form onSubmit={handleFinalReset}>
+          <form onSubmit={handleFinalReset} aria-label="Set new password">
             <h2 className="text-xl font-semibold mb-2">Set New Password</h2>
             <p className="mb-4 text-sm text-gray-400">Updating password for: {initialResetData?.email}</p>
             
@@ -196,6 +195,8 @@ export default function LoginModal({ onClose, onReset, setUser, initialResetData
                 value={password} 
                 onChange={(e) => setPassword(e.target.value)} 
                 onKeyUp={handleKeyUp}
+                minLength={8}
+                maxLength={128}
                 required 
               />
               <span className="password-icon" onClick={() => setShowPassword(!showPassword)}>
@@ -205,10 +206,10 @@ export default function LoginModal({ onClose, onReset, setUser, initialResetData
               <div className="password-tooltip">
                 <p>New Password Requirements:</p>
                 <ul>
-                  <li className={resetReqs.length ? "valid" : ""}>Min. 8 chars</li>
+                  <li className={resetReqs.length ? "valid" : ""}>8–128 chars</li>
                   <li className={resetReqs.uppercase ? "valid" : ""}>Uppercase</li>
                   <li className={resetReqs.number ? "valid" : ""}>Number</li>
-                  <li className={resetReqs.special ? "valid" : ""}>Special (!@#)</li>
+                  <li className={resetReqs.special ? "valid" : ""}>Special character</li>
                 </ul>
               </div>
             </div>
@@ -221,6 +222,8 @@ export default function LoginModal({ onClose, onReset, setUser, initialResetData
               className="login-modal-input" 
               value={confirmPassword} 
               onChange={(e) => setConfirmPassword(e.target.value)} 
+              minLength={8}
+              maxLength={128}
               required 
             />
             <button className="login-modal-btn">Update Password</button>

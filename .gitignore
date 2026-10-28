@@ -32,4 +32,7 @@ yarn-error.log*
 *.db-wal
 backend/obj/
 backend/bin/
+backend.Tests/bin/
+backend.Tests/obj/
+TestResults/
 backend/obj/Debug/net9.0/backend.AssemblyInfoInputs.cache

@@ -3,6 +3,7 @@ using backend.Models;
 using backend.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using backend.Validation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,14 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite("Data Source=financev2.db"));
 
-builder.Services.AddIdentity<User, IdentityRole>(options =>
-{
-    options.Password.RequiredLength = 4;
-    options.Password.RequireDigit = false;
-    options.Password.RequireLowercase = false;
-    options.Password.RequireUppercase = false;
-    options.Password.RequireNonAlphanumeric = false;
-})
+builder.Services.AddIdentity<User, IdentityRole>(PasswordPolicy.ConfigureIdentity)
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders(); // Niezbędne do generowania tokenów resetu hasła
 

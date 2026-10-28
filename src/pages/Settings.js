@@ -1,5 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { toast, ToastContainer } from "react-toastify";
+import React, { useState, useEffect, useRef } from "react";
+import { toast } from "react-toastify";
+import { apiErrorMessage, postJson, requestApi } from "../services/financeApi";
+import { readStoredArray, useCategories } from "../hooks/useFinanceData";
+import { categoryExists, normalizeCategoryName } from "../utils/validation";
 // Import stylów Toastify MUSI być przed Twoim SCSS
 import "react-toastify/dist/ReactToastify.css"; 
 import "./Settings.scss";
@@ -10,14 +13,12 @@ const Settings = ({ user }) => {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [currency, setCurrency] = useState("USD ($)");
   const [selectedCurrency, setSelectedCurrency] = useState("USD ($)");
-  const [confirmationMessage, setConfirmationMessage] = useState("");
-
   const [annualBudget, setAnnualBudget] = useState(0);
-  const [savedBudget, setSavedBudget] = useState(0);
-  const [budgetMessage, setBudgetMessage] = useState("");
-
-  const [customCategories, setCustomCategories] = useState([]);
+  const categoryData = useCategories(user);
+  const customCategories = categoryData.data;
   const [newCategory, setNewCategory] = useState("");
+  const pending = useRef(false);
+  const [isPending, setIsPending] = useState(false);
 
   // Zaktualizowany config Toasta - dodano theme: "dark"
   const toastConfig = {
@@ -26,38 +27,28 @@ const Settings = ({ user }) => {
     theme: "dark", 
   };
 
-  const fetchCategories = useCallback(async () => {
-    if (user) {
-      try {
-        const response = await fetch("http://localhost:5109/api/category", {
-          method: "GET",
-          credentials: "include",
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setCustomCategories(data); 
-          return;
-        }
-      } catch (error) {
-        console.error("Błąd pobierania kategorii z API:", error);
-      }
-    }
-    const saved = JSON.parse(localStorage.getItem("customCategories") || "[]");
-    setCustomCategories(saved);
-  }, [user]);
-
   useEffect(() => {
     const savedCurrency = localStorage.getItem("currency") || "USD ($)";
     const storedBudget = localStorage.getItem("annualBudget") || "0";
 
     setCurrency(savedCurrency);
     setSelectedCurrency(savedCurrency);
-    setSavedBudget(Number(storedBudget));
     setAnnualBudget(Number(storedBudget));
-    setBudgetMessage(`Annual budget set to: ${savedCurrency} ${storedBudget} ✅`);
+  }, [user]);
 
-    fetchCategories();
-  }, [user, fetchCategories]);
+  const runAction = async (action, failureMessage) => {
+    if (pending.current) return;
+    pending.current = true;
+    setIsPending(true);
+    try {
+      await action();
+    } catch (error) {
+      toast.error(apiErrorMessage(error, failureMessage), toastConfig);
+    } finally {
+      pending.current = false;
+      setIsPending(false);
+    }
+  };
 
   const handleCurrencyChange = (event) => {
     setSelectedCurrency(event.target.value);
@@ -75,19 +66,13 @@ const Settings = ({ user }) => {
 
   const handleConfirmBudget = () => {
     localStorage.setItem("annualBudget", annualBudget);
-    setSavedBudget(annualBudget);
     toast.info(`Annual budget updated to ${currency} ${annualBudget} ✅`, toastConfig);
   };
 
-  const handleExport = async () => {
-    try {
-      const response = await fetch("http://localhost:5109/api/transaction/export", {
-        method: "GET",
-        credentials: "include",
-      });
-
-      if (!response.ok) throw new Error("Export failed");
-
+  const handleExport = () => {
+    if (!user) return;
+    return runAction(async () => {
+      const response = await requestApi("/transaction/export");
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -99,93 +84,68 @@ const Settings = ({ user }) => {
       window.URL.revokeObjectURL(url);
 
       toast.success("Report downloaded successfully! 📊", toastConfig);
-    } catch (error) {
-      console.error("Export error:", error);
-      toast.error("Could not generate report.", toastConfig);
-    }
+    }, "Could not generate report.");
   };
 
   const handleAddCategory = async () => {
-    if (newCategory.trim() === "") {
+    const name = normalizeCategoryName(newCategory);
+    if (name === "") {
       toast.warning("Category name cannot be empty! ⚠️", toastConfig);
       return;
     }
 
+    if (name.length > 25) {
+      toast.warning("Category name cannot exceed 25 characters.", toastConfig);
+      return;
+    }
+
+    if (categoryExists(name, customCategories)) {
+      toast.warning("This category already exists.", toastConfig);
+      return;
+    }
+
+    return runAction(async () => {
+      if (user) {
+        await postJson("/category", { name });
+      } else {
+        const updated = [...readStoredArray("customCategories"), { name }];
+        localStorage.setItem("customCategories", JSON.stringify(updated));
+      }
+      setNewCategory("");
+      toast.success("Category saved successfully.", toastConfig);
+      await categoryData.reload();
+    }, "Could not save category. Your input has been preserved.");
+  };
+
+  const handleDeleteCategory = categoryObj => runAction(async () => {
     if (user) {
-      try {
-        const response = await fetch("http://localhost:5109/api/category", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: newCategory }),
-          credentials: "include",
-        });
-        if (response.ok) {
-          setNewCategory("");
-          fetchCategories();
-          toast.success("New category added to cloud! ☁️", toastConfig);
-          return;
-        }
-      } catch (error) {
-        toast.error("Failed to save category to server.", toastConfig);
-      }
-    }
-
-    const updatedCategories = [...customCategories, { name: newCategory }];
-    localStorage.setItem("customCategories", JSON.stringify(updatedCategories));
-    setCustomCategories(updatedCategories);
-    setNewCategory("");
-    toast.success("Category saved locally! 💾", toastConfig);
-  };
-
-  const handleDeleteCategory = async (categoryObj) => {
-    if (user && categoryObj.id) {
-      try {
-        const response = await fetch(`http://localhost:5109/api/category/${categoryObj.id}`, {
+      if (!categoryObj.id) throw new Error("Missing category ID.");
+      await requestApi(`/category/${categoryObj.id}`, {
           method: "DELETE",
-          credentials: "include",
-        });
-        if (response.ok) {
-          fetchCategories();
-          toast.error("Category deleted from server!", toastConfig);
-          return;
-        }
-      } catch (error) {
-        console.error("Błąd usuwania kategorii z serwera:", error);
-      }
+      });
+    } else {
+      const updated = readStoredArray("customCategories").filter(c => c.name !== categoryObj.name);
+      localStorage.setItem("customCategories", JSON.stringify(updated));
     }
+    toast.success("Category removed.", toastConfig);
+    await categoryData.reload();
+  }, "Could not delete category. Please try again.");
 
-    const updatedCategories = customCategories.filter((c) => c.name !== categoryObj.name);
-    localStorage.setItem("customCategories", JSON.stringify(updatedCategories));
-    setCustomCategories(updatedCategories);
-    toast.error("Category removed! ❌", toastConfig);
-  };
-
-  const executeReset = async () => {
+  const executeReset = () => runAction(async () => {
     if (user) {
-      try {
-        await fetch("http://localhost:5109/api/transaction/reset", {
+      await requestApi("/transaction/reset", {
           method: "DELETE",
-          credentials: "include"
-        });
-      } catch (error) {
-        toast.error("Server reset error.", toastConfig);
-        return;
-      }
+      });
+    } else {
+      localStorage.removeItem("salaries");
+      localStorage.removeItem("expenses");
     }
-    localStorage.removeItem("salaries");
-    localStorage.removeItem("expenses");
-    
-    toast.success("Data wiped! Reloading...", {
-      ...toastConfig,
-      onClose: () => window.location.reload()
-    });
-  };
+    setIsResetModalOpen(false);
+    toast.success("Transactions deleted successfully.", toastConfig);
+  }, "Could not reset transactions. Please try again.");
 
   return (
     <div className="settings-container">
-      {/* Dodano theme="dark" bezpośrednio do kontenera */}
-      <ToastContainer theme="dark" /> 
-      
       <h2>Settings</h2>
       <p>Customize your experience and preferences</p>
 
@@ -218,14 +178,24 @@ const Settings = ({ user }) => {
           value={newCategory}
           onChange={(e) => setNewCategory(e.target.value.slice(0, 25))}
           maxLength="25"
+          aria-label="New category"
+          disabled={isPending}
         />
-        <button className="category-button" onClick={handleAddCategory}>Add Category ➕</button>
+        <button className="category-button" onClick={handleAddCategory} disabled={isPending || categoryData.loading || !!categoryData.error}>Add Category ➕</button>
+
+        {categoryData.loading && <p role="status">Loading categories…</p>}
+        {categoryData.error && (
+          <div role="alert">
+            <p>{categoryData.error}</p>
+            <button type="button" onClick={categoryData.reload}>Retry categories</button>
+          </div>
+        )}
 
         <ul className="category-list">
           {customCategories.map((category, index) => (
             <li key={category.id || index} className="category-item">
               <span className="category-name">{category.name}</span>
-              <button onClick={() => handleDeleteCategory(category)} className="delete-button">❌</button>
+              <button aria-label={`Delete ${category.name}`} onClick={() => handleDeleteCategory(category)} className="delete-button" disabled={isPending}>❌</button>
             </li>
           ))}
         </ul>
@@ -233,14 +203,15 @@ const Settings = ({ user }) => {
 
       <div className="reset-section">
         <div className="button-container">
-          <button className="confirm-button" onClick={handleExport}>
+          <button className="confirm-button" onClick={handleExport} disabled={!user || isPending}>
             Export CSV 📊
           </button>
           
-          <button className="reset-button" onClick={() => setIsResetModalOpen(true)}>
+          <button className="reset-button" onClick={() => setIsResetModalOpen(true)} disabled={isPending}>
             {user ? "Reset Account Data 🔄" : "Reset Local Data 🔄"}
           </button>
         </div>
+        {!user && <p>CSV export is available after signing in.</p>}
       </div>
 
       {isResetModalOpen && (
@@ -249,14 +220,11 @@ const Settings = ({ user }) => {
             <h3>Confirm Reset ⚠️</h3>
             <p>Are you sure? This will delete all your transactions. This action cannot be undone!</p>
             <div className="modal-footer">
-              <button className="btn-cancel" onClick={() => setIsResetModalOpen(false)}>
+              <button className="btn-cancel" onClick={() => setIsResetModalOpen(false)} disabled={isPending}>
                 Cancel
               </button>
-              <button className="btn-confirm-danger" onClick={() => {
-                executeReset();
-                setIsResetModalOpen(false);
-              }}>
-                Yes, Delete Everything
+              <button className="btn-confirm-danger" onClick={executeReset} disabled={isPending}>
+                {isPending ? "Deleting…" : "Yes, Delete Everything"}
               </button>
             </div>
           </div>
