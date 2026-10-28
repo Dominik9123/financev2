@@ -10,6 +10,35 @@ Projekt full-stack do zarządzania finansami osobistymi: React, ASP.NET Core 9 i
 
 Pełna wersja lokalna udostępnia także rejestrację, logowanie przez ciasteczko Identity, reset hasła, dane użytkownika w SQLite i eksport CSV. Wymaga jednoczesnego uruchomienia frontendu i backendu. Dane gościa pozostają osobne i nie są importowane na konto po zalogowaniu.
 
+## Zrzuty ekranu
+
+Zrzuty wykonano lokalnie w **trybie gościa**, na przykładowych danych. Funkcje konta i eksport CSV wymagają zalogowania w pełnej wersji lokalnej.
+
+**Dashboard — wykres przychodów, sumy i saldo**
+
+![Dashboard gościa z wykresem przychodów, sumami przychodów i wydatków oraz saldem](screenshots/dashboard.png)
+
+<details>
+<summary>Pokaż podsumowanie miesiąca, wydatki, historię i ustawienia</summary>
+
+**Podsumowanie miesiąca i ostatnie transakcje**
+
+![Miesięczne przychody i wydatki oraz lista ostatnich transakcji](screenshots/monthly-summary.png)
+
+**Kategorie wydatków i wykres podziału kosztów**
+
+![Formularz wydatków z kategoriami i wykresem kosztów według kategorii](screenshots/expenses.png)
+
+**Historia transakcji i filtry**
+
+![Historia transakcji z filtrami kategorii, dat i kwot](screenshots/history.png)
+
+**Wybór waluty i własne kategorie**
+
+![Ustawienia gościa z wyborem waluty, własnymi kategoriami i informacją o eksporcie CSV po zalogowaniu](screenshots/settings.png)
+
+</details>
+
 ## Technologie
 
 | Część | Technologie |

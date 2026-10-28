@@ -21,6 +21,35 @@ The **full local application** adds registration, cookie-based login, password r
 | CSV export | No | Yes |
 | Registration, login and password reset | No | Yes; reset requires SMTP |
 
+## Screenshots
+
+Screenshots captured locally in **guest mode** with sample data. Account features and CSV export require signing in to the full local application.
+
+**Dashboard — income trend, totals and balance**
+
+![Guest dashboard with an income chart, total income, expenses and balance](docs/screenshots/dashboard.png)
+
+<details>
+<summary>View monthly summary, expenses, history and settings</summary>
+
+**Monthly summary and recent activity**
+
+![Monthly income and expense totals with recent transactions](docs/screenshots/monthly-summary.png)
+
+**Expense categories and breakdown**
+
+![Expense entry form with category cards and a category breakdown chart](docs/screenshots/expenses.png)
+
+**Transaction history and filters**
+
+![Transaction history with category, date and amount filters](docs/screenshots/history.png)
+
+**Currency settings and custom categories**
+
+![Guest settings with currency selection, custom categories and account-only CSV export](docs/screenshots/settings.png)
+
+</details>
+
 ## Tech stack
 
 - **Frontend:** React 19, React Router, Create React App, Chart.js, SCSS and React Toastify.
