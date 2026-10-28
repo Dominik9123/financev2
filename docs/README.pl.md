@@ -163,6 +163,8 @@ Skrypt `scripts/build-guest-demo.js` ustawia `REACT_APP_GUEST_DEMO=true`. Sam pu
 
 Publiczne demo nie hostuje API ASP.NET Core. Funkcje konta są dostępne po uruchomieniu aplikacji lokalnie; obecna konfiguracja backendu jest przeznaczona do lokalnego developmentu.
 
+Build demo tworzy także `history/index.html` i `settings/index.html` na podstawie gotowego pliku aplikacji. Dzięki temu GitHub Pages obsługuje bezpośrednie wejście i odświeżenie obu tras. Hosting może dodać końcowy ukośnik do adresu; React Router obsługuje obie wersje. Dodając nową stronę, dopisz jej trasę także w `scripts/build-guest-demo.js`. Wynika to ze [statycznego sposobu hostowania GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages).
+
 ## Typowe problemy
 
 - **Brak `react-scripts`:** wykonaj `npm ci` w katalogu głównym, następnie `npm start`.

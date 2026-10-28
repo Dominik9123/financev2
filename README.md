@@ -193,6 +193,8 @@ npm run deploy      # Rebuild the guest demo and publish it to gh-pages
 
 The public demo does not host the ASP.NET Core API. Full account functionality is demonstrated locally; the backend configuration is currently intended for local development.
 
+The guest build also creates `history/index.html` and `settings/index.html` from the built app shell. These entry files let GitHub Pages serve direct visits and page refreshes on both routes. Pages may add a trailing slash to the URL; React Router accepts both forms. When adding a new page, include its route in `scripts/build-guest-demo.js` as well. This is specific to [GitHub Pages' static hosting](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages).
+
 ## Troubleshooting
 
 - **`react-scripts` is not recognized:** run `npm ci` in the repository root, then `npm start`.

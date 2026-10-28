@@ -77,6 +77,24 @@ test("the GitHub Pages guest build does not contact the backend", async () => {
   expect(global.fetch).not.toHaveBeenCalled();
 });
 
+test.each([
+  ["/financev2/history", "History page"],
+  ["/financev2/history/", "History page"],
+  ["/financev2/settings", "Settings page"],
+  ["/financev2/settings/", "Settings page"],
+])("the guest demo opens directly at %s", (path, heading) => {
+  process.env.REACT_APP_GUEST_DEMO = "true";
+  window.history.replaceState({}, "", `${path}?source=refresh#top`);
+
+  render(<App />);
+
+  expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
+  expect(window.location.pathname).toBe(path);
+  expect(window.location.search).toBe("?source=refresh");
+  expect(window.location.hash).toBe("#top");
+  expect(global.fetch).not.toHaveBeenCalled();
+});
+
 test("logging in from history preserves the current route", async () => {
   render(<App />);
   await screen.findByRole("heading", { name: "Dashboard page" });
