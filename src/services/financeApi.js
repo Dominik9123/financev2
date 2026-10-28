@@ -1,4 +1,6 @@
-const API_URL = "http://localhost:5109/api";
+const API_URL = (
+  process.env.REACT_APP_API_URL?.trim() || "http://localhost:5109/api"
+).replace(/\/+$/, "");
 
 export class ApiError extends Error {
   constructor(message, status, validationMessage = "") {

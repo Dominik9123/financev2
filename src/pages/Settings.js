@@ -12,9 +12,7 @@ const currencyOptions = ["USD ($)", "EUR (€)", "PLN (zł)", "GBP (£)", "JPY (
 
 const Settings = ({ user }) => {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-  const [currency, setCurrency] = useState("USD ($)");
   const [selectedCurrency, setSelectedCurrency] = useState("USD ($)");
-  const [annualBudget, setAnnualBudget] = useState(0);
   const categoryData = useCategories(user);
   const reloadCategories = useRef(categoryData.reload);
   reloadCategories.current = categoryData.reload;
@@ -33,11 +31,7 @@ const Settings = ({ user }) => {
 
   useEffect(() => {
     const savedCurrency = localStorage.getItem("currency") || "USD ($)";
-    const storedBudget = localStorage.getItem("annualBudget") || "0";
-
-    setCurrency(savedCurrency);
     setSelectedCurrency(savedCurrency);
-    setAnnualBudget(Number(storedBudget));
   }, [user]);
 
   const runAction = async (action, failureMessage) => {
@@ -61,18 +55,8 @@ const Settings = ({ user }) => {
   };
 
   const handleConfirmCurrency = () => {
-    setCurrency(selectedCurrency);
     localStorage.setItem("currency", selectedCurrency);
     toast.success(`Currency changed to ${selectedCurrency}! 💰`, toastConfig);
-  };
-
-  const handleBudgetChange = (event) => {
-    setAnnualBudget(Number(event.target.value));
-  };
-
-  const handleConfirmBudget = () => {
-    localStorage.setItem("annualBudget", annualBudget);
-    toast.info(`Annual budget updated to ${currency} ${annualBudget} ✅`, toastConfig);
   };
 
   const handleExport = () => {
@@ -167,18 +151,6 @@ const Settings = ({ user }) => {
       </select>
 
       <button className="confirm-button" onClick={handleConfirmCurrency}>Confirm Currency ✅</button>
-
-      <div className="budget-section">
-        <label className="settings-label">Set Annual Budget:</label>
-        <input
-          type="number"
-          className="budget-input"
-          value={annualBudget}
-          onChange={handleBudgetChange}
-          min="0"
-        />
-        <button className="budget-button" onClick={handleConfirmBudget}>Confirm Budget ✅</button>
-      </div>
 
       <div className="custom-category-section">
         <label className="settings-label">Add Custom Category:</label>

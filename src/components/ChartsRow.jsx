@@ -12,7 +12,7 @@ import {
 
 const ChartsRow = ({ salaries, expenseList, currency, totalIncome, totalExpense }) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedYear] = useState(new Date().getFullYear());
 
   const months = [
     "January", "February", "March", "April", "May", "June",
