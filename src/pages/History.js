@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { fetchCurrencyRates } from "../services/currencyService";
-import { convertCurrency } from "../utils/convertCurrency";
+import React, { useState, useEffect, useMemo } from "react";
+import { useCurrencyRates } from "../hooks/useCurrencyRates";
+import { convertTransactions } from "../utils/convertCurrency";
 import { useTransactions } from "../hooks/useFinanceData";
 import "./History.css";
 
@@ -15,114 +15,69 @@ const History = ({ user }) => {
   const [minAmount, setMinAmount] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
 
-  // Stan dla kursów walut (dla localStorage)
-const [localRates, setLocalRates] = useState({ PLN: 1 });
-const [ratesLoading, setRatesLoading] = useState(true);
-const [ratesError, setRatesError] = useState("");
-
-  const fetchNBPRates = useCallback(async () => {
-    setRatesLoading(true);
-    setRatesError("");
-
-    try {
-      const newRates = await fetchCurrencyRates();
-      setLocalRates(newRates);
-    } catch (error) {
-      console.error("Błąd pobierania kursów NBP:", error);
-      setRatesError("Nie udało się pobrać kursów walut.");
-    } finally {
-      setRatesLoading(false);
-    }
-  }, []);
-
-useEffect(() => {
-  fetchNBPRates();
-}, [fetchNBPRates]);
+  const { rates: localRates, loading: ratesLoading, error: ratesError, reload: fetchNBPRates } = useCurrencyRates();
 
   useEffect(() => {
     const savedCurrency = localStorage.getItem("currency") || "USD ($)";
     setCurrency(savedCurrency);
   }, [user]);
 
-  // --- UNIWERSALNA LOGIKA KURSÓW ---
-const conversion = useMemo(() => {
-  if (ratesLoading || ratesError) {
-    return null;
-  }
-
-  try {
-    const targetCode = currency.split(" ")[0];
-
-    if (!Number.isFinite(localRates[targetCode])) {
-      throw new Error("Nieobsługiwana waluta docelowa.");
+  const conversion = useMemo(() => {
+    if (ratesLoading || ratesError) {
+      return null;
     }
 
-    const convertedTransactions = transactions.map(transaction => {
-      if (!Number.isFinite(transaction.amount)) {
-        throw new Error("Niepoprawna kwota transakcji.");
-      }
+    try {
+      const targetCode = currency.split(" ")[0];
 
+      return { transactions: convertTransactions(transactions, targetCode, localRates) };
+    } catch {
       return {
-        ...transaction,
-        amount: convertCurrency(
-          transaction.amount,
-          transaction.currency,
-          targetCode,
-          localRates
-        ),
-        currency: targetCode
+        error: "Nie można przeliczyć transakcji. Sprawdź ich kwoty i waluty."
       };
-    });
+    }
+  }, [transactions, currency, localRates, ratesLoading, ratesError]);
 
-    return { transactions: convertedTransactions };
-  } catch {
-    return {
-      error: "Nie można przeliczyć transakcji. Sprawdź ich kwoty i waluty."
-    };
+  if (transactionData.loading) {
+    return <div className="history-container"><p role="status">Loading transactions…</p></div>;
   }
-}, [transactions, currency, localRates, ratesLoading, ratesError]);
 
-if (transactionData.loading) {
-  return <div className="history-container"><p role="status">Loading transactions…</p></div>;
-}
+  if (transactionData.error) {
+    return (
+      <div className="history-container">
+        <p role="alert">{transactionData.error}</p>
+        <button type="button" onClick={transactionData.reload}>Retry transactions</button>
+      </div>
+    );
+  }
 
-if (transactionData.error) {
-  return (
-    <div className="history-container">
-      <p role="alert">{transactionData.error}</p>
-      <button type="button" onClick={transactionData.reload}>Retry transactions</button>
-    </div>
-  );
-}
+  if (ratesLoading) {
+    return (
+      <div className="history-container">
+        <p role="status">Pobieranie kursów walut…</p>
+      </div>
+    );
+  }
 
-if (ratesLoading) {
-  return (
-    <div className="history-container">
-      <p role="status">Pobieranie kursów walut…</p>
-    </div>
-  );
-}
+  if (ratesError) {
+    return (
+      <div className="history-container">
+        <p role="alert">{ratesError}</p>
+        <button type="button" onClick={fetchNBPRates}>
+          Spróbuj ponownie
+        </button>
+      </div>
+    );
+  }
 
-if (ratesError) {
-  return (
-    <div className="history-container">
-      <p role="alert">{ratesError}</p>
-      <button type="button" onClick={fetchNBPRates}>
-        Spróbuj ponownie
-      </button>
-    </div>
-  );
-}
-
-if (conversion.error) {
-  return (
-    <div className="history-container">
-      <p role="alert">{conversion.error}</p>
-    </div>
-  );
-}
-  // --- FILTROWANIE ---
-    const filteredTransactions = conversion.transactions.filter(t => {
+  if (conversion.error) {
+    return (
+      <div className="history-container">
+        <p role="alert">{conversion.error}</p>
+      </div>
+    );
+  }
+  const filteredTransactions = conversion.transactions.filter(t => {
     const convertedAmount = t.amount;
     const tDate = t.date ? t.date.split("T")[0] : "";
     const matchesCategory = selectedCategory === "All" || t.category === selectedCategory || (selectedCategory === "Income" && t.type === "Income");
@@ -133,7 +88,7 @@ if (conversion.error) {
 
   const currencySymbol = currency.split(' ')[1] || currency.split(' ')[0];
 
-  return (  
+  return (
     <div className="history-container">
       <h1 className="outlined-text">Transaction History</h1>
       <div className="filters">
@@ -161,7 +116,7 @@ if (conversion.error) {
               {t.type === "Income" ? "+" : "-"} {currencySymbol} {t.amount.toFixed(2)}
             </span>
             <span className="transaction-category">
-               {t.category || "Income"}
+              {t.category || "Income"}
             </span>
             <span className="transaction-date">
               {new Date(t.date).toLocaleDateString()}

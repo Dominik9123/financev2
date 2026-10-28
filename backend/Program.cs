@@ -1,30 +1,27 @@
 using backend.Data;
 using backend.Models;
 using backend.Services;
+using backend.Validation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using backend.Validation;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Konfiguracja bazy danych SQLite
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite("Data Source=financev2.db"));
 
 builder.Services.AddIdentity<User, IdentityRole>(PasswordPolicy.ConfigureIdentity)
-.AddEntityFrameworkStores<AppDbContext>()
-.AddDefaultTokenProviders(); // Niezbędne do generowania tokenów resetu hasła
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddDefaultTokenProviders();
 
-// 3. Rejestracja kontrolerów i usług
 builder.Services.AddControllers();
 
-// Rejestracja usługi wysyłania maili (Mailtrap)
+// SMTP settings are validated when sending mail, so other account features work without them.
 builder.Services.AddOptions<SmtpOptions>()
     .Bind(builder.Configuration.GetSection(SmtpOptions.SectionName))
     .ValidateDataAnnotations();
 builder.Services.AddTransient<IEmailSender, EmailSender>();
 
-// Rejestracja HttpClient i CurrencyService
 builder.Services.AddHttpClient("nbp", client =>
 {
     client.Timeout = TimeSpan.FromSeconds(10);
@@ -32,7 +29,6 @@ builder.Services.AddHttpClient("nbp", client =>
 
 builder.Services.AddSingleton<CurrencyService>();
 
-// 4. Konfiguracja CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReact", policy =>
@@ -42,7 +38,6 @@ builder.Services.AddCors(options =>
               .AllowCredentials());
 });
 
-// 5. Konfiguracja ciasteczek (Authentication Cookie)
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.Name = ".FinanceApp.Auth";
@@ -63,7 +58,6 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 var app = builder.Build();
 
-// 6. Middleware Pipeline
 app.UseCors("AllowReact");
 
 app.UseAuthentication();
@@ -71,5 +65,4 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-Console.WriteLine("Serwer uruchomiony na http://localhost:5109");
 app.Run();

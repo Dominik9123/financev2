@@ -16,7 +16,6 @@ const App = () => {
   const sessionContext = useMemo(() => ({ expired: status === "expired", expireSession }), [status, expireSession]);
 
   useEffect(() => {
-    // 1. Wykrywanie parametrów resetu w adresie URL
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
     const email = params.get("email");
@@ -24,14 +23,11 @@ const App = () => {
     if (token && email && !guestOnly) {
       setInitialResetData({ token, email });
     }
-
   }, [guestOnly]);
 
-  // Ta funkcja czyści stan i pasek adresu URL
   const handleFinalClose = () => {
     if (!initialResetData) return;
     setInitialResetData(null);
-    // Usuwamy ?token=... z paska adresu, aby Dashboard mógł się odświeżyć
     window.history.replaceState({}, document.title, "/financev2/");
   };
 
@@ -40,47 +36,47 @@ const App = () => {
 
   return (
     <SessionContext.Provider value={sessionContext}>
-    <Router basename="/financev2">
-      <Navbar 
-        user={user} 
-        setUser={setUser} 
-        initialResetData={initialResetData} 
-        onCloseReset={handleFinalClose}
-        sessionExpired={status === "expired"}
-        guestOnly={guestOnly}
-      />
-      <main className="container">
-        {status === "unavailable" ? (
-          <div className="session-panel" role="alert">
-            <h1>Could not verify your session</h1>
-            <p>The server is unavailable or returned an invalid response. Please try again or choose guest mode.</p>
-            <button type="button" onClick={checkSession}>Retry session check</button>
-            <button type="button" onClick={continueAsGuest}>Continue as guest</button>
-          </div>
-        ) : <>
-        {status === "expired" && (
-          <div className="session-panel session-banner" role="alert">
-            <p>Your session has expired. Use Login to sign in again. Account data will not be saved until you sign in.</p>
-            <button type="button" onClick={continueAsGuest}>Continue as guest</button>
-          </div>
-        )}
-        <Routes>
-          <Route 
-            path="/" 
-            element={<Dashboard user={user} key={`${ownerKey}:${initialResetData ? "reset" : "normal"}`} />}
-          />
-          <Route path="/history" element={<History user={user} key={ownerKey} />} />
-          <Route path="/settings" element={<Settings user={user} key={ownerKey} />} />
-        </Routes>
-        </>}
-      </main>
+      <Router basename="/financev2">
+        <Navbar
+          user={user}
+          setUser={setUser}
+          initialResetData={initialResetData}
+          onCloseReset={handleFinalClose}
+          sessionExpired={status === "expired"}
+          guestOnly={guestOnly}
+        />
+        <main className="container">
+          {status === "unavailable" ? (
+            <div className="session-panel" role="alert">
+              <h1>Could not verify your session</h1>
+              <p>The server is unavailable or returned an invalid response. Please try again or choose guest mode.</p>
+              <button type="button" onClick={checkSession}>Retry session check</button>
+              <button type="button" onClick={continueAsGuest}>Continue as guest</button>
+            </div>
+          ) : <>
+            {status === "expired" && (
+              <div className="session-panel session-banner" role="alert">
+                <p>Your session has expired. Use Login to sign in again. Account data will not be saved until you sign in.</p>
+                <button type="button" onClick={continueAsGuest}>Continue as guest</button>
+              </div>
+            )}
+            <Routes>
+              <Route
+                path="/"
+                element={<Dashboard user={user} key={`${ownerKey}:${initialResetData ? "reset" : "normal"}`} />}
+              />
+              <Route path="/history" element={<History user={user} key={ownerKey} />} />
+              <Route path="/settings" element={<Settings user={user} key={ownerKey} />} />
+            </Routes>
+          </>}
+        </main>
 
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        theme="dark"
-      />
-    </Router>
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          theme="dark"
+        />
+      </Router>
     </SessionContext.Provider>
   );
 };

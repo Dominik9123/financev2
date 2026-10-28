@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using backend.Models;
 using backend.Models.Dtos;
 using Microsoft.AspNetCore.Authorization;
-using backend.Services; // Dodane dla IEmailSender
+using backend.Services;
 using Microsoft.AspNetCore.WebUtilities;
 using System.Text.Encodings.Web;
 
@@ -13,10 +13,9 @@ public class AuthController : ControllerBase
 {
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
-    private readonly IEmailSender _emailSender; // Nowe pole
+    private readonly IEmailSender _emailSender;
     private readonly IConfiguration _configuration;
 
-    // Zaktualizowany konstruktor
     public AuthController(
         UserManager<User> userManager,
         SignInManager<User> signInManager,
@@ -93,8 +92,6 @@ public class AuthController : ControllerBase
         });
     }
 
-    // --- NOWE METODY DO RESETU HASŁA ---
-
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
     {
@@ -107,10 +104,8 @@ public class AuthController : ControllerBase
         if (user == null)
             return Ok(new { message = resetRequestMessage });
 
-        // Generowanie tokenu przez ASP.NET Core Identity
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
-        // Przygotowanie linku do Frontendu (React)
         var resetUrl = _configuration["Frontend:PasswordResetUrl"]
             ?? throw new InvalidOperationException(
                 "Frontend:PasswordResetUrl is not configured.");
@@ -125,7 +120,6 @@ public class AuthController : ControllerBase
 
         var safeResetLink = HtmlEncoder.Default.Encode(resetLink);
 
-        // Wysłanie maila przez Mailtrap
         await _emailSender.SendEmailAsync(
             user.Email!,
             "Reset Password - Finance Tracker",

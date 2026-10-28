@@ -1,41 +1,46 @@
-# 💰 Personal Finance Tracker v2.0
+# Finance Tracker
 
-[English Version](#english-version-en) | [Wersja Polska](#wersja-polska-pl) | [🌐 Live Demo](https://dominik9123.github.io/financev2/)
+A full-stack personal finance project built with React, ASP.NET Core and SQLite. Track income and expenses, filter transaction history and view amounts in five currencies using NBP exchange rates.
 
----
+[Live guest demo](https://dominik9123.github.io/financev2/) · [Dokumentacja po polsku](docs/README.pl.md)
 
-## Wersja Polska (PL)
+## Demo and application modes
 
-Aplikacja typu Full-Stack do zarządzania finansami osobistymi z **automatycznym przeliczaniem walut** w czasie rzeczywistym dzięki integracji z API NBP.
+The GitHub Pages demo runs in **guest mode**. It stores transactions and custom categories in the current browser's local storage. You can try the dashboard, history filters and currency selection without an account.
 
-### 🌐 Demo Online
-Przetestuj aplikację tutaj: [dominik9123.github.io/financev2/](https://dominik9123.github.io/financev2/)
-> **Uwaga**: Wersja demonstracyjna GitHub Pages wspiera wyłącznie **Tryb Gościa** (dane zapisywane lokalnie w przeglądarce). Funkcje konta użytkownika i trwałej bazy danych wymagają uruchomienia backendu lokalnie.
+The **full local application** adds registration, cookie-based login, password reset, account-specific SQLite data and CSV export. These features require the backend to run alongside the frontend. Guest data is separate from account data and is not imported when you sign in.
 
-`npm run deploy` buduje demo z ustawieniem `REACT_APP_GUEST_DEMO=true`. Taki build nie sprawdza sesji na lokalnym API i pokazuje oznaczenie „Guest demo”. `npm start` oraz zwykłe `npm run build` zachowują obsługę kont użytkowników.
+| Capability | Guest demo | Local account |
+| --- | --- | --- |
+| Add income and expenses | Yes | Yes |
+| Dashboard charts and recent activity | Yes | Yes |
+| History filters: category, date and amount | Yes | Yes |
+| PLN, USD, EUR, GBP and JPY display currencies | Yes | Yes |
+| Custom categories | Browser storage | SQLite, per account |
+| Transaction storage | Current browser | SQLite, per account |
+| CSV export | No | Yes |
+| Registration, login and password reset | No | Yes; reset requires SMTP |
 
-### 🚀 Kluczowe Funkcje
-* **Wsparcie Wielu Walut**: Automatyczne pobieranie kursów (USD, EUR, PLN) z Narodowego Banku Polskiego.
-* **Tryb Hybrydowy**: Działa dla **Zalogowanych Użytkowników** (Baza SQLite) oraz dla **Gości** (Local Storage).
-* **Interaktywny Dashboard**: Wizualizacja trendów finansowych za pomocą wykresów liniowych i słupkowych (Chart.js).
-* **Historia Transakcji**: Filtrowanie po kategoriach, datach oraz kwotach.
-* **Inteligentne Przeliczenia**: Każda kwota jest przeliczana na wybraną walutę "w locie".
+## Tech stack
 
-### 🛠 Technologie
-* **Backend**: .NET 9 Web API, Entity Framework Core, SQLite.
-* **Frontend**: React.js, SCSS, Chart.js.
-* **API**: Integracja z API NBP (kursy średnie z tabeli A).
+- **Frontend:** React 19, React Router, Create React App, Chart.js, SCSS and React Toastify.
+- **Backend:** ASP.NET Core 9 controllers, ASP.NET Core Identity and Entity Framework Core 9.
+- **Storage:** SQLite for accounts; local storage for guests.
+- **Integrations:** NBP table A exchange rates; MailKit for SMTP password-reset messages.
+- **Tests:** Jest and React Testing Library; xUnit with real HTTP endpoints, Identity cookies and temporary SQLite databases.
 
-### 📦 Uruchomienie Lokalnie
+## Run locally
 
-**Wymagania:**
+Requirements: Node.js 22.x with npm, .NET 9 SDK and Git. The backend currently targets `net9.0`.
 
-* Node.js 20 lub nowszy oraz npm.
-* .NET SDK 9 — backend jest obecnie kompilowany dla `net9.0`.
+```powershell
+git clone https://github.com/Dominik9123/financev2.git
+cd financev2
+```
 
-**1. Backend**
+### 1. Backend
 
-Otwórz terminal w katalogu głównym projektu i wykonaj:
+From the repository root:
 
 ```powershell
 cd backend
@@ -45,133 +50,153 @@ dotnet ef database update
 dotnet run --launch-profile http
 ```
 
-* `dotnet restore` pobiera zależności backendu z NuGet.
-* `dotnet tool restore` przywraca lokalne narzędzie `dotnet-ef` z manifestu `backend/.config/dotnet-tools.json`.
-* `dotnet ef database update` tworzy bazę SQLite przy pierwszym uruchomieniu lub aktualizuje jej schemat zgodnie z migracjami. Plik bazy powstaje w `backend/financev2.db`.
-* `dotnet run --launch-profile http` uruchamia backend pod adresem [http://localhost:5109](http://localhost:5109), w środowisku `Development`.
+The local tool manifest installs the project's `dotnet-ef` version. Migrations create `backend/financev2.db`; no database or preconfigured user credentials are included in the repository.
 
-Pozostaw ten terminal uruchomiony. Do testowania resetu hasła skonfiguruj SMTP zgodnie z sekcją „Konfiguracja poczty — lokalny development” poniżej.
+The API starts at **http://localhost:5109/api** in the `Development` environment. Keep this terminal running. Registration and login work without SMTP; only sending password-reset emails requires mail credentials.
 
-**2. Frontend**
+### 2. Frontend
 
-Otwórz **drugi terminal w katalogu głównym projektu**, w którym znajduje się `package.json`, i wykonaj:
+Open a second terminal at the repository root, where `package.json` is located:
 
 ```powershell
 npm ci
 npm start
 ```
 
-`npm ci` instaluje zależności w wersjach zapisanych w `package-lock.json`, zapewniając powtarzalną instalację. Przy kolejnych uruchomieniach, jeśli zależności się nie zmieniły, wystarczy `npm start`.
+Open [http://localhost:3000/financev2/](http://localhost:3000/financev2/). If port 3000 is occupied, accept port 3001 and use [http://localhost:3001/financev2/](http://localhost:3001/financev2/). The backend allows both origins in its local CORS policy.
 
-Otwórz aplikację pod adresem [http://localhost:3000/financev2/](http://localhost:3000/financev2/).
+Register your own account through **Login → Register**, or continue as a guest. Use the same hostname, `localhost`, for both the frontend and backend when testing cookie-based login.
 
-Jeżeli port `3000` jest zajęty, serwer frontendu może zaproponować port `3001`. Wtedy otwórz [http://localhost:3001/financev2/](http://localhost:3001/financev2/). Backend dopuszcza oba lokalne adresy frontendu w konfiguracji CORS. Backend i frontend muszą działać jednocześnie, aby korzystać z kont użytkowników i danych zapisanych w SQLite.
+## Configuration
 
-Link resetujący hasło korzysta z `Frontend:PasswordResetUrl` w `backend/appsettings.Development.json`. Dopasuj go do adresu działającego frontendu: `http://localhost:3000/financev2/` lub `http://localhost:3001/financev2/`. Po zmianie konfiguracji uruchom ponownie backend. Przy wdrożeniu backendu ustaw docelowy adres frontendu przez `Frontend__PasswordResetUrl`.
+| Setting | Location | Purpose |
+| --- | --- | --- |
+| `REACT_APP_API_URL` | `.env.local` | API base URL; defaults to `http://localhost:5109/api` |
+| `REACT_APP_GUEST_DEMO` | Frontend build environment | Set to `true` to disable account access and the initial session check |
+| `Frontend:PasswordResetUrl` | `backend/appsettings.Development.json` | Frontend URL used in reset emails; defaults to port 3001 |
+| `Smtp:*` | Backend configuration and User Secrets | SMTP connection, sender and credentials |
+| SQLite path | `backend/Program.cs` | `Data Source=financev2.db`, relative to the backend's working directory |
 
-### Testy i walidacja
-
-Z katalogu głównego repozytorium:
+To override the frontend API URL:
 
 ```powershell
-npm test -- --watchAll=false --runInBand
-dotnet test backend.Tests/backend.Tests.csproj -p:UseAppHost=false -p:BaseOutputPath=bin/validation-tests/
+Copy-Item .env.example .env.local
 ```
 
-Testy backendu uruchamiają rzeczywiste kontrolery HTTP, ASP.NET Core Identity i osobną, tymczasową bazę SQLite. Nie korzystają z `backend/financev2.db`, SMTP ani NBP. Osobny katalog wynikowy pozwala uruchamiać je przy działającym lokalnym backendzie.
+Edit `.env.local`, then restart `npm start`. Frontend environment variables are embedded during the build and are visible to browser users; use them for public configuration only.
 
-Transakcje wymagają kwoty od `0.01` do `1000000000` z maksymalnie dwoma miejscami po przecinku, obsługiwanej waluty, typu `Income` lub `Expense`, tytułu (do 100 znaków), kategorii (do 25 znaków) i daty. Kategorie są przycinane i sprawdzane pod kątem duplikatów w obrębie konta, bez rozróżniania wielkości liter. Nazwy kategorii domyślnych oraz `Income` i `All` są zarezerwowane.
+Match `Frontend:PasswordResetUrl` to the running frontend port, including the `/financev2/` path. Restart the backend after changing it. The equivalent environment variable is `Frontend__PasswordResetUrl`.
 
-Rejestracja wymaga imienia i nazwiska (do 50 znaków każde), poprawnego adresu e-mail (do 254 znaków) oraz hasła długości 8–128 znaków z wielką literą, cyfrą i znakiem specjalnym. Te same wymagania hasła obowiązują przy resecie hasła.
+### Password-reset email
 
-Po pięciu kolejnych błędnych hasłach Identity blokuje nowe logowania na konto na pięć minut. Udane logowanie zeruje licznik nieudanych prób. Frontend rozpoznaje konto po ID. Brak sesji (`401`) pozwala uruchomić tryb gościa; błąd serwera lub połączenia pokazuje możliwość ponowienia albo świadomego wyboru trybu gościa. Wygaśnięcie sesji zachowuje formularz dla ponownego logowania na to samo konto i blokuje dalszy zapis.
+The supplied development settings use **Mailtrap Email Sandbox** over STARTTLS on port 587. Messages appear in the sandbox rather than the recipient's real inbox.
 
-### Konfiguracja poczty — lokalny development
+In Mailtrap, open your sandbox's SMTP integration settings. From `backend/`, enter the credentials using **PowerShell 7**:
 
-Reset hasła używa Mailtrap Email Sandbox. Wiadomości trafiają do sandboxa w Mailtrap, nie do rzeczywistej skrzynki odbiorcy.
+```powershell
+$smtpUsername = Read-Host 'Mailtrap SMTP Username'
+$smtpPassword = Read-Host 'Mailtrap SMTP Password' -MaskInput
+@{ 'Smtp:Username' = $smtpUsername; 'Smtp:Password' = $smtpPassword } |
+  ConvertTo-Json -Compress | dotnet user-secrets set
+Remove-Variable smtpUsername, smtpPassword
+```
 
-1. W Mailtrap otwórz **Email Testing → Sandboxes → swój sandbox → Integration**. Jeżeli dane SMTP były wcześniej opublikowane, wybierz **Reset Credentials** i użyj nowej pary danych dostępowych.
-2. W PowerShell, w katalogu `backend`, zapisz nowe dane przez User Secrets. Poniższy kod poprosi o login i hasło bez umieszczania ich w historii poleceń:
+Alternatively, use Visual Studio's **Manage User Secrets** and set `Smtp:Username` and `Smtp:Password`. Restart the backend after configuration. Host, port and sender defaults are in `backend/appsettings.json`.
 
-   ```powershell
-   $smtpUsername = Read-Host 'Mailtrap SMTP Username'
-   $smtpPassword = Read-Host 'Mailtrap SMTP Password' -MaskInput
-   @{ 'Smtp:Username' = $smtpUsername; 'Smtp:Password' = $smtpPassword } |
-     ConvertTo-Json -Compress | dotnet user-secrets set
-   Remove-Variable smtpUsername, smtpPassword
-   ```
+User Secrets stores development settings outside the repository without encryption. Keep credentials out of tracked files. For a separately hosted backend, supply them through the host's secret store or `Smtp__Username` and `Smtp__Password` environment variables.
 
-   Opcja `-MaskInput` wymaga PowerShell 7. W Windows PowerShell 5.1 można ustawić te wartości w Visual Studio: kliknij prawym przyciskiem projekt backendu, wybierz **Manage User Secrets** i dodaj klucze `Smtp:Username` oraz `Smtp:Password`.
-3. Uruchom ponownie backend przez `dotnet run`. Profil lokalny ustawia środowisko `Development`, w którym ASP.NET Core automatycznie odczytuje User Secrets.
+## Code map
 
-Host, port i nadawca znajdują się w `backend/appsettings.json`; można je nadpisać kluczami `Smtp:Host`, `Smtp:Port`, `Smtp:FromEmail` i `Smtp:FromName`. Integracja używa STARTTLS — wybierz obsługujący go port, np. 587.
+```text
+src/
+  pages/              Dashboard, transaction history and settings
+  components/         Navigation, authentication dialogs and chart summaries
+  hooks/              Session guards, account/guest data and exchange-rate loading
+  services/           HTTP requests, session responses and the NBP client
+  utils/              Input validation and currency-conversion functions
+backend/
+  Controllers/        Authentication, transactions and categories
+  Models/             Database entities
+    DTOs/             API request shapes and input validation
+  Services/           SMTP, exchange rates and CSV generation
+  Validation/         Shared password policy and category-name rules
+  Data/               EF Core database context
+  Migrations/         Versioned SQLite schema changes
+backend.Tests/        Backend unit and HTTP integration tests
+scripts/              Guest-demo build script
+docs/                 Polish documentation
+```
 
-User Secrets przechowuje dane poza repozytorium, w profilu użytkownika. Jest to mechanizm developerski; wartości nie są szyfrowane. Nie kopiuj ich do kodu ani plików konfiguracyjnych w repozytorium. Przy wdrożeniu użyj magazynu sekretów hostingu lub zmiennych środowiskowych `Smtp__Username` i `Smtp__Password`.
+Start with `src/App.js` for routes and session handling, then `src/pages/Dashboard.js` for the main user flow. `src/services/financeApi.js` centralizes API requests and errors. `useFinanceData` handles the account/guest split; `useSession` handles session checks and expired sessions.
 
-Brak danych SMTP nie blokuje startu aplikacji ani logowania. Konfiguracja jest walidowana dopiero przy próbie wysłania wiadomości resetującej hasło.
+On the backend, controllers receive validated DTOs and use EF Core for account-scoped data. `CurrencyService` and `TransactionCsvExporter` contain exchange-rate and CSV logic. Service registration, cookies and local CORS are in `backend/Program.cs`.
 
----
+## Data and currency behavior
 
-## English Version (EN)
+- Supported currencies: **PLN, USD, EUR, GBP and JPY**. Original amounts and currency codes are retained; changing the display currency does not rewrite stored transactions.
+- The app requests the latest published **average rates from NBP table A**. These are not live market prices or historical transaction-date valuations. See the [NBP API documentation](https://api.nbp.pl/).
+- Dashboard and History use the frontend NBP client through the shared `useCurrencyRates` hook. The separate API summary endpoint uses its own backend service, with a one-hour in-memory cache. The screens do not currently consume that endpoint.
+- Backend summaries convert before summing and round totals to two decimal places. Missing or invalid exchange rates cause an error rather than a made-up conversion rate.
+- CSV export contains the signed-in user's original amounts and currencies. It uses semicolon separators, UTF-8 with BOM, quoted text fields and a prefix for formula-like text.
+- An account request failure never silently switches to guest data. Expired sessions block writes and preserve drafts for signing back into the same account.
+- Transaction amounts must be between `0.01` and `1,000,000,000`, with at most two decimal places. New and reset passwords require 8–128 characters, an uppercase letter, a digit and a special character. Five consecutive wrong passwords temporarily block new sign-ins for five minutes.
 
-A modern full-stack application for managing personal finances with **real-time currency conversion** integrated with the NBP API.
+## API overview
 
-### 🌐 Live Demo
-Check out the live version: [dominik9123.github.io/financev2/](https://dominik9123.github.io/financev2/)
-> **Note**: The GitHub Pages demo supports **Guest Mode only** (LocalStorage). Features like user accounts and a persistent SQL database require running the backend locally.
+Paths below are relative to `/api`. Protected endpoints use the Identity authentication cookie, sent by the frontend with `credentials: "include"`.
 
-`npm run deploy` builds with `REACT_APP_GUEST_DEMO=true`, so the published guest demo does not call the local authentication API. Regular development and production builds retain account support. Account identity uses the user ID; server failures do not silently switch to guest data. Identity blocks new sign-ins for five minutes after five consecutive wrong passwords.
+| Method | Path | Purpose | Login required |
+| --- | --- | --- | --- |
+| POST | `/auth/register`, `/auth/login`, `/auth/logout` | Account registration and session actions | No |
+| GET | `/auth/me` | Current account profile | Yes |
+| POST | `/auth/forgot-password`, `/auth/reset-password` | Request or complete a password reset | No |
+| GET / POST | `/transaction` | List or add account transactions | Yes |
+| PUT / DELETE | `/transaction/{id}` | Update or delete an owned transaction | Yes |
+| DELETE | `/transaction/reset` | Delete the account's transactions | Yes |
+| GET | `/transaction/export` | Download CSV | Yes |
+| GET | `/transaction/summary?targetCurrency=PLN` | Converted income, expenses and balance | Yes |
+| GET / POST | `/category` | List or add custom categories | Yes |
+| DELETE | `/category/{id}` | Delete an owned custom category | Yes |
 
-### 🚀 Key Features
-* **Multi-Currency Support**: Automatically fetch exchange rates (USD, EUR, PLN) from the National Bank of Poland.
-* **Dual Mode**: Use the app as a **Logged-in User** (SQLite DB) or as a **Guest** (Local Storage).
-* **Dynamic Dashboard**: Financial trends visualized with line and bar charts (Chart.js).
-* **Smart History**: Full list of transactions with category, date, and amount filtering.
-* **Automated Conversions**: Every amount is dynamically converted to your selected currency.
+The API exposes individual transaction update/delete operations; the current frontend focuses on adding transactions, viewing history and resetting all transactions.
 
-### 🛠 Tech Stack
-* **Backend**: .NET 9 Web API, SQLite (EF Core), ASP.NET Core Identity.
-* **Frontend**: React.js, SCSS, Chart.js, React Icons.
-
-### 📦 Installation
-1. **Backend**:
-   - Navigate to `backend`, run `dotnet restore` and `dotnet run`.
-2. **Frontend**:
-   - Navigate to `frontend`, run `npm install` and `npm start`.
-
-Password reset links use `Frontend:PasswordResetUrl` from `backend/appsettings.Development.json`. Match its port to the running frontend (3000 or 3001). For a hosted backend, configure the frontend URL with `Frontend__PasswordResetUrl`.
-
-### Tests
+## Verify changes
 
 Run from the repository root:
 
 ```powershell
 npm test -- --watchAll=false --runInBand
 dotnet test backend.Tests/backend.Tests.csproj -p:UseAppHost=false -p:BaseOutputPath=bin/validation-tests/
+npm run build
 ```
 
-Backend tests use real HTTP controllers, Identity cookies and a temporary SQLite database. They do not access the development database, SMTP or NBP. New and reset passwords require 8–128 characters, an uppercase letter, a digit and a special character. Transaction amounts support up to two decimal places; custom category names are unique per account, ignoring case and surrounding whitespace.
+Frontend tests cover validation, account API failures, session transitions, dialogs and preserving unconfirmed input. Backend tests cover DTO validation, account isolation, lockouts, password-reset tokens, CSV output and exchange-rate failures/cache behavior. Backend tests use temporary databases and captured or stubbed integrations, without touching the development database or sending real emails.
 
-### Email configuration — local development
+The separate backend test output path avoids overwriting binaries used by a running development server. To review known dependency advisories:
 
-Password reset uses Mailtrap Email Sandbox. Messages appear in the Mailtrap sandbox, not the recipient's real inbox.
+```powershell
+npm audit
+dotnet list backend/backend.csproj package --vulnerable --include-transitive
+```
 
-1. Open **Email Testing → Sandboxes → your sandbox → Integration** in Mailtrap. If SMTP credentials were exposed, use **Reset Credentials** before configuring the app.
-2. From `backend`, use PowerShell 7 to enter the new credentials without including their values in command history:
+For a manual check, add guest transactions, reload the page, change currency and filter history. Then register an account, repeat the flow, export CSV and confirm a second account sees separate data. Stop the API and check that account actions show an error rather than saving to guest storage. Test password reset through the configured SMTP sandbox.
 
-   ```powershell
-   $smtpUsername = Read-Host 'Mailtrap SMTP Username'
-   $smtpPassword = Read-Host 'Mailtrap SMTP Password' -MaskInput
-   @{ 'Smtp:Username' = $smtpUsername; 'Smtp:Password' = $smtpPassword } |
-     ConvertTo-Json -Compress | dotnet user-secrets set
-   Remove-Variable smtpUsername, smtpPassword
-   ```
+## Build and GitHub Pages
 
-   Alternatively, use Visual Studio's **Manage User Secrets** for the backend project and add `Smtp:Username` and `Smtp:Password`.
-3. Restart the backend with `dotnet run`. The local launch profile uses `Development`, which loads User Secrets automatically.
+```powershell
+npm run build       # Full application frontend; requires a separately running API
+npm run predeploy   # Build the guest-only demo without publishing
+npm run deploy      # Rebuild the guest demo and publish it to gh-pages
+```
 
-Non-secret SMTP settings are in `backend/appsettings.json`. The integration requires a STARTTLS-capable port, such as 587. User Secrets stores unencrypted development credentials outside the repository. For deployment, use the hosting platform's secret store or environment variables `Smtp__Username` and `Smtp__Password`.
+`npm run deploy` sets `REACT_APP_GUEST_DEMO=true` through `scripts/build-guest-demo.js`. Pushing source commits alone does not run this deployment script. The router and build URL currently use the `/financev2/` base path.
 
-SMTP settings are validated when sending a password-reset email; missing credentials do not prevent startup or login.
+The public demo does not host the ASP.NET Core API. Full account functionality is demonstrated locally; the backend configuration is currently intended for local development.
 
----
+## Troubleshooting
+
+- **`react-scripts` is not recognized:** run `npm ci` in the repository root, then `npm start`.
+- **Cannot connect to the API:** confirm the backend is listening on port 5109, check `REACT_APP_API_URL` and restart the frontend after changing `.env.local`.
+- **Missing database tables:** run `dotnet tool restore` and `dotnet ef database update` from `backend/`.
+- **Reset link opens the wrong port:** update `Frontend:PasswordResetUrl` and restart the backend.
+- **No reset email in your inbox:** development emails go to Mailtrap's sandbox. Check SMTP credentials and backend logs if no message arrives there.

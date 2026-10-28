@@ -5,69 +5,41 @@
   100% { background-position: 0% 50%; }
 }
 
-
-
 .settings-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    text-align: center;
-    height: 110vh;
-    padding: 20px;
-    padding-top: 90px;
-    background-color: #121212;
-    color: #fff;
-    
-    
-h2 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: center;
+  height: 110vh;
+  padding: 20px;
+  padding-top: 90px;
+  background-color: #121212;
+  color: #fff;
+
+  h2 {
     font-size: 28px;
     font-weight: bold;
     margin-bottom: 10px;
-}
+  }
 
-p {
+  p {
     font-size: 16px;
     color: #888;
     margin-bottom: 20px;
-}
-}
-
-.confirm-button, 
-.budget-button, 
-.category-button, 
-.export-button, 
-.reset-button {
-  margin-top: 15px;
-  padding: 12px 25px;
-  background-color: #222; /* Ciemne tło jak w budget-button */
-  color: white;
-  font-size: 16px;
-  font-weight: bold;
-  border: 1px solid #ffffff; /* Biała ramka */
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-align: center;
-  width: fit-content;
-  min-width: 180px;
-
-  &:hover {
-    background-color: #27ae60; /* Zielony hover jak w budget-button */
-    border-color: #27ae60;
-    box-shadow: 0 0 10px rgba(39, 174, 96, 0.5);
-    transform: translateY(-2px);
   }
 }
 
-.export-button {
+.confirm-button,
+.category-button,
+.reset-button {
   margin-top: 15px;
   padding: 12px 25px;
-  background-color: #222; 
+  background-color: #222;
   color: white;
   font-size: 16px;
   font-weight: bold;
-  border: 1px solid #ffffff; 
+  border: 1px solid #ffffff;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -76,7 +48,7 @@ p {
   min-width: 180px;
 
   &:hover {
-    background-color: #27ae60; 
+    background-color: #27ae60;
     border-color: #27ae60;
     box-shadow: 0 0 10px rgba(39, 174, 96, 0.5);
     transform: translateY(-2px);
@@ -91,22 +63,20 @@ p {
 
 .button-container {
   display: flex;
-  justify-content: center; 
-  gap: 20px; 
-  margin-top: 30px; 
+  justify-content: center;
+  gap: 20px;
+  margin-top: 30px;
 }
 
-
-
 .currency-select {
-   appearance: none;
+  appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
 
   background-color: #222;
   color: #fff;
 
-  border: 2px solid #ffffff; 
+  border: 2px solid #ffffff;
   border-radius: 8px;
 
   padding: 10px 40px 10px 12px;
@@ -118,9 +88,8 @@ p {
   outline: none;
   transition: 0.25s ease;
 
-  margin-bottom: 20px; 
+  margin-bottom: 20px;
 
-  
   background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg width='12' height='8' viewBox='0 0 12 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23ff6600' stroke-width='2' fill='none'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
@@ -128,7 +97,7 @@ p {
 
 .currency-select:hover {
   border-color: white;
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.4)
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
 }
 
 /* Dropdown — opcje */
@@ -141,43 +110,6 @@ p {
   border-color: #ffa200;
   box-shadow: 0 0 10px rgba(255, 165, 0, 0.8);
 }
-
-.confirmation-message {
-  color: green;
-  font-size: 16px;
-  margin-top: 10px;
-  font-weight: bold;
-}
-
-.budget-section {
-  margin-top: 30px; 
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.budget-input {
-  padding: 10px;
-  font-size: 16px;
-  border-radius: 5px;
-  margin-top: 8px;
-  width: 100%;
-  text-align: center;
-
-  border-color: white;
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.4)
-}
-
-
-
-
-.budget-message {
-  color: green;
-  font-size: 16px;
-  margin-top: 10px;
-  font-weight: bold;
-}
-
 
 .custom-category-section {
   margin-top: 40px;
@@ -193,13 +125,11 @@ p {
   width: 100%;
   text-align: center;
   border-color: white;
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.4)
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
 }
 
-
-
 .category-item {
-  position: relative; 
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -211,30 +141,29 @@ p {
   margin-bottom: 20px;
 
   border-color: white;
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.4)
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
 }
 
 .category-name {
-  flex-grow: 1; 
+  flex-grow: 1;
   text-align: center;
   font-weight: bold;
   color: #fff;
 }
 
-
 .delete-button {
   position: absolute;
-  right: -60px; 
-  background: none; 
+  right: -60px;
+  background: none;
   border: none;
   cursor: pointer;
   font-size: 20px;
   color: red;
-  transition: transform 0.3s ease-in-out; /* Płynna animacja */
+  transition: transform 0.3s ease-in-out;
 }
 
 .delete-button:hover {
-  transform: scale(1.2); 
+  transform: scale(1.2);
 }
 
 .settings-label {
@@ -254,19 +183,23 @@ p {
 }
 
 .custom-category-section label {
-  margin-bottom: 10px; 
+  margin-bottom: 10px;
 }
 
-
 .reset-section {
-  margin-top: 40px; 
+  margin-top: 40px;
 }
 
 .modal-overlay {
   position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   background: rgba(0, 0, 0, 0.85); // Przyciemnienie tła
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   z-index: 1000;
 }
 
@@ -280,17 +213,39 @@ p {
   text-align: center;
   box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 
-  h3 { color: #ff5252; margin-bottom: 15px; }
-  p { margin-bottom: 10px; color: #ccc; }
+  h3 {
+    color: #ff5252;
+    margin-bottom: 15px;
+  }
+
+  p {
+    margin-bottom: 10px;
+    color: #ccc;
+  }
 }
 
 .modal-footer {
-  display: flex; gap: 15px; justify-content: center; margin-top: 25px;
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 25px;
 
   button {
-    padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
   }
 
-  .btn-cancel { background: #444; color: white; border: none; }
-  .btn-confirm-danger { background: #ff5252; color: white; border: none; }
+  .btn-cancel {
+    background: #444;
+    color: white;
+    border: none;
+  }
+
+  .btn-confirm-danger {
+    background: #ff5252;
+    color: white;
+    border: none;
+  }
 }

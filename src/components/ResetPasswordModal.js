@@ -45,7 +45,7 @@ export default function ResetPasswordModal({ onClose, onBackToLogin }) {
         <button className="login-modal-close" onClick={onClose} disabled={isSending}>×</button>
 
         <h2 className="text-xl font-semibold mb-4">Reset Your Password</h2>
-        
+
         {/* FORMULARZ MUSI MIEĆ ONSUBMIT */}
         <form onSubmit={handleResetRequest} aria-label="Password reset request">
           <input
@@ -53,7 +53,7 @@ export default function ResetPasswordModal({ onClose, onBackToLogin }) {
             placeholder="E-mail"
             className="login-modal-input"
             value={email}
-            onChange={(e) => setEmail(e.target.value)} 
+            onChange={(e) => setEmail(e.target.value)}
             disabled={isSending}
             required
           />

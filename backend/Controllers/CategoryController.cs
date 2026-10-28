@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using backend.Data;
 using backend.Models;
+using backend.Models.Dtos;
 using System.Security.Claims;
 using System.Data;
 using backend.Validation;
@@ -19,7 +20,6 @@ public class CategoryController : ControllerBase
         _context = context;
     }
 
-    // Pobiera kategorie zalogowanego użytkownika
     [HttpGet]
     public async Task<IActionResult> GetCategories()
     {
@@ -30,7 +30,6 @@ public class CategoryController : ControllerBase
         return Ok(categories);
     }
 
-    // Dodaje nową kategorię
     [HttpPost]
     public async Task<IActionResult> AddCategory([FromBody] CategoryDto dto)
     {
@@ -68,14 +67,12 @@ public class CategoryController : ControllerBase
         return Ok(category);
     }
 
-    // Usuwa konkretną kategorię
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteCategory(int id)
     {
         var category = await _context.Categories.FindAsync(id);
         if (category == null) return NotFound();
 
-        // Sprawdzenie czy użytkownik usuwa swoją kategorię
         if (category.UserId != User.FindFirstValue(ClaimTypes.NameIdentifier))
             return Unauthorized();
 

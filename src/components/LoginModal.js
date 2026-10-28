@@ -9,7 +9,7 @@ import { signIn } from "../services/sessionService";
 export default function LoginModal({ onClose, onReset, setUser, initialResetData }) {
   // Jeśli mamy dane resetu, startujemy od widoku "setNewPassword"
   const [view, setView] = useState(initialResetData ? "setNewPassword" : "login");
-  
+
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isCapsLockOn, setIsCapsLockOn] = useState(false);
@@ -189,24 +189,24 @@ export default function LoginModal({ onClose, onReset, setUser, initialResetData
           <form onSubmit={handleFinalReset} aria-label="Set new password">
             <h2 className="text-xl font-semibold mb-2">Set New Password</h2>
             <p className="mb-4 text-sm text-gray-400">Updating password for: {initialResetData?.email}</p>
-            
+
             <div className="password-container">
-              <input 
-                type={showPassword ? "text" : "password"} 
-                placeholder="New Password" 
-                className="login-modal-input" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="New Password"
+                className="login-modal-input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 onKeyUp={handleKeyUp}
                 minLength={8}
                 maxLength={128}
                 disabled={isResetting}
-                required 
+                required
               />
               <span className="password-icon" onClick={() => setShowPassword(!showPassword)}>
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </span>
-              
+
               <div className="password-tooltip">
                 <p>New Password Requirements:</p>
                 <ul>
@@ -220,16 +220,16 @@ export default function LoginModal({ onClose, onReset, setUser, initialResetData
 
             {isCapsLockOn && <div className="caps-lock-warning"><FaExclamationTriangle /> Caps Lock is ON</div>}
 
-            <input 
-              type="password" 
-              placeholder="Confirm New Password" 
-              className="login-modal-input" 
-              value={confirmPassword} 
-              onChange={(e) => setConfirmPassword(e.target.value)} 
+            <input
+              type="password"
+              placeholder="Confirm New Password"
+              className="login-modal-input"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               minLength={8}
               maxLength={128}
               disabled={isResetting}
-              required 
+              required
             />
             <button className="login-modal-btn" disabled={isResetting}>
               {isResetting ? "Updating…" : "Update Password"}

@@ -4,8 +4,7 @@ import { apiErrorMessage, postJson, requestApi } from "../services/financeApi";
 import { readStoredArray, useCategories } from "../hooks/useFinanceData";
 import { categoryExists, normalizeCategoryName } from "../utils/validation";
 import { useSessionGuard } from "../hooks/useSession";
-// Import stylów Toastify MUSI być przed Twoim SCSS
-import "react-toastify/dist/ReactToastify.css"; 
+import "react-toastify/dist/ReactToastify.css";
 import "./Settings.scss";
 
 const currencyOptions = ["USD ($)", "EUR (€)", "PLN (zł)", "GBP (£)", "JPY (¥)"];
@@ -22,11 +21,10 @@ const Settings = ({ user }) => {
   const [isPending, setIsPending] = useState(false);
   const { isCurrent, isSameSession, canWrite, reportSessionError, expired } = useSessionGuard(user);
 
-  // Zaktualizowany config Toasta - dodano theme: "dark"
   const toastConfig = {
     position: "top-right",
     autoClose: 3000,
-    theme: "dark", 
+    theme: "dark",
   };
 
   useEffect(() => {
@@ -113,7 +111,7 @@ const Settings = ({ user }) => {
     if (user) {
       if (!categoryObj.id) throw new Error("Missing category ID.");
       await requestApi(`/category/${categoryObj.id}`, {
-          method: "DELETE",
+        method: "DELETE",
       });
     } else {
       const updated = readStoredArray("customCategories").filter(c => c.name !== categoryObj.name);
@@ -127,7 +125,7 @@ const Settings = ({ user }) => {
   const executeReset = () => runAction(async () => {
     if (user) {
       await requestApi("/transaction/reset", {
-          method: "DELETE",
+        method: "DELETE",
       });
     } else {
       localStorage.removeItem("salaries");
@@ -188,7 +186,7 @@ const Settings = ({ user }) => {
           <button className="confirm-button" onClick={handleExport} disabled={!user || isPending || expired}>
             Export CSV 📊
           </button>
-          
+
           <button className="reset-button" onClick={() => setIsResetModalOpen(true)} disabled={isPending || expired}>
             {user ? "Reset Account Data 🔄" : "Reset Local Data 🔄"}
           </button>

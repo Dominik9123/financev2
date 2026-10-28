@@ -4,7 +4,7 @@ import { IoSettingsOutline } from "react-icons/io5";
 import { MdOutlineCompareArrows, MdSpaceDashboard } from "react-icons/md";
 import { FiLogIn, FiLogOut } from "react-icons/fi";
 import LoginModal from "./LoginModal";
-import ResetPasswordModal from "./ResetPasswordModal"; 
+import ResetPasswordModal from "./ResetPasswordModal";
 import { toast } from "react-toastify";
 import "./Navbar.css";
 import { requestApi } from "../services/financeApi";
@@ -32,9 +32,9 @@ const Navbar = ({ user, setUser, initialResetData, onCloseReset, sessionExpired 
     setIsLoggingOut(true);
     try {
       await requestApi("/auth/logout", { method: "POST" });
-        setUser(null);
-        toast.info("Logged out successfully. See you soon!");
-        navigate("/");
+      setUser(null);
+      toast.info("Logged out successfully. See you soon!");
+      navigate("/");
     } catch (error) {
       reportSessionError(error);
       toast.error(error.status === 0
@@ -57,14 +57,14 @@ const Navbar = ({ user, setUser, initialResetData, onCloseReset, sessionExpired 
   return (
     <nav className="navbar">
       <div className="logo">Finance Tracker</div>
-      
+
       {user && (
         <div className="welcome-container">
           <span className="welcome-separator"> Welcome </span>
           <span className="welcome-text">{user.firstName || user.email}</span>
         </div>
       )}
-      
+
       <div className="burger-menu" onClick={() => setIsOpen(!isOpen)}>
         <div className={isOpen ? "bar open" : "bar"}></div>
         <div className={isOpen ? "bar open" : "bar"}></div>
@@ -105,8 +105,8 @@ const Navbar = ({ user, setUser, initialResetData, onCloseReset, sessionExpired 
       </ul>
 
       {showLoginModal && (
-        <LoginModal 
-          onClose={handleCloseLoginModal} 
+        <LoginModal
+          onClose={handleCloseLoginModal}
           setUser={setUser}
           initialResetData={initialResetData}
           onReset={() => { setShowLoginModal(false); setShowReset(true); }}
@@ -116,7 +116,7 @@ const Navbar = ({ user, setUser, initialResetData, onCloseReset, sessionExpired 
       {showReset && (
         <ResetPasswordModal
           onClose={() => setShowReset(false)}
-          onBackToLogin={() => { setShowReset(false); setShowLoginModal(true); }} 
+          onBackToLogin={() => { setShowReset(false); setShowLoginModal(true); }}
         />
       )}
     </nav>

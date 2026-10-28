@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { Line } from "react-chartjs-2";
 import "./ChartsRow.scss";
-import { 
-  FaMoneyBillWave, 
-  FaShoppingCart, 
-  FaHistory, 
-  FaArrowUp, 
+import {
+  FaMoneyBillWave,
+  FaShoppingCart,
+  FaHistory,
+  FaArrowUp,
   FaArrowDown,
   FaCalendarAlt
 } from "react-icons/fa";
@@ -93,19 +93,19 @@ const ChartsRow = ({ salaries, expenseList, currency, totalIncome, totalExpense 
       </div>
 
       <div className="month-selector-container">
-          <div className="month-selector-box">
-            <FaCalendarAlt className="calendar-icon" />
-            <select 
-              value={selectedMonth} 
-              onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-              className="month-dropdown"
-            >
-              {months.map((name, index) => (
-                <option key={index} value={index}>{name}</option>
-              ))}
-            </select>
-            <span className="year-label">{selectedYear}</span>
-          </div>
+        <div className="month-selector-box">
+          <FaCalendarAlt className="calendar-icon" />
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+            className="month-dropdown"
+          >
+            {months.map((name, index) => (
+              <option key={index} value={index}>{name}</option>
+            ))}
+          </select>
+          <span className="year-label">{selectedYear}</span>
+        </div>
       </div>
 
       <div className="dashboard-details-row">

@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Bar, Line } from "react-chartjs-2";
 import ChartsRow from "../components/ChartsRow";
-import "../components/ChartsRow.scss";
-import { convertCurrency } from "../utils/convertCurrency";
-import { fetchCurrencyRates } from "../services/currencyService";
+import { convertTransactions } from "../utils/convertCurrency";
+import { useCurrencyRates } from "../hooks/useCurrencyRates";
 import { toast } from "react-toastify";
 import { apiErrorMessage, postJson } from "../services/financeApi";
 import { readStoredArray, useCategories, useTransactions } from "../hooks/useFinanceData";
@@ -59,97 +58,51 @@ const Dashboard = ({ user }) => {
   const [isSaving, setIsSaving] = useState(false);
   const { isCurrent, isSameSession, canWrite, reportSessionError, expired } = useSessionGuard(user);
 
-  // Kursy walut są wspólne dla konta i trybu gościa.
-  const [localRates, setLocalRates] = useState({ PLN: 1 });
-  const [ratesLoading, setRatesLoading] = useState(true);
-  const [ratesError, setRatesError] = useState("");
+  const { rates: localRates, loading: ratesLoading, error: ratesError, reload: fetchNBPRates } = useCurrencyRates();
 
   const getCurrencyCode = () => {
     return (localStorage.getItem("currency") || "USD ($)").split(" ")[0];
   };
 
-  // --- POBIERANIE KURSÓW  ---
-const fetchNBPRates = useCallback(async () => {
-  setRatesLoading(true);
-  setRatesError("");
+  useEffect(() => {
+    const savedCurrency = localStorage.getItem("currency") || "USD ($)";
+    setCurrency(savedCurrency);
+  }, [user]);
 
-  try {
-    const newRates = await fetchCurrencyRates();
-    setLocalRates(newRates);
-  } catch (error) {
-    console.error("Błąd pobierania kursów NBP:", error);
-    setRatesError("Nie udało się pobrać kursów walut.");
-  } finally {
-    setRatesLoading(false);
-  }
-}, []);
-
-
-   useEffect(() => {
-    fetchNBPRates();
-  }, [fetchNBPRates]);
-
-useEffect(() => {
-  const savedCurrency = localStorage.getItem("currency") || "USD ($)";
-  setCurrency(savedCurrency);
-}, [user]);
-
-  // --- UNIWERSALNA LOGIKA PRZELICZANIA (GOŚĆ + ZALOGOWANY) ---
   const conversion = useMemo(() => {
-  if (ratesLoading || ratesError) {
-    return null;
-  }
-
-  try {
-    const targetCode = currency.split(" ")[0];
-
-    if (!Number.isFinite(localRates[targetCode])) {
-      throw new Error("Nieobsługiwana waluta docelowa.");
+    if (ratesLoading || ratesError) {
+      return null;
     }
 
-    const convertTransaction = transaction => {
-      if (!Number.isFinite(transaction.amount)) {
-        throw new Error("Niepoprawna kwota transakcji.");
-      }
+    try {
+      const targetCode = currency.split(" ")[0];
+
+      const convertedSalaries = convertTransactions(salaries, targetCode, localRates);
+      const convertedExpenses = convertTransactions(expenseList, targetCode, localRates);
+
+      const totalIncome = convertedSalaries.reduce(
+        (sum, transaction) => sum + transaction.amount,
+        0
+      );
+
+      const totalExpense = convertedExpenses.reduce(
+        (sum, transaction) => sum + transaction.amount,
+        0
+      );
 
       return {
-        ...transaction,
-        amount: convertCurrency(
-          transaction.amount,
-          transaction.currency,
-          targetCode,
-          localRates
-        ),
-        currency: targetCode
+        salaries: convertedSalaries,
+        expenseList: convertedExpenses,
+        totalIncome,
+        totalExpense,
+        balance: totalIncome - totalExpense
       };
-    };
-
-    const convertedSalaries = salaries.map(convertTransaction);
-    const convertedExpenses = expenseList.map(convertTransaction);
-
-    const totalIncome = convertedSalaries.reduce(
-      (sum, transaction) => sum + transaction.amount,
-      0
-    );
-
-    const totalExpense = convertedExpenses.reduce(
-      (sum, transaction) => sum + transaction.amount,
-      0
-    );
-
-    return {
-      salaries: convertedSalaries,
-      expenseList: convertedExpenses,
-      totalIncome,
-      totalExpense,
-      balance: totalIncome - totalExpense
-    };
-  } catch {
-    return {
-      error: "Nie można przeliczyć transakcji. Sprawdź ich kwoty i waluty."
-    };
-  }
-}, [salaries, expenseList, currency, localRates, ratesLoading, ratesError]);
+    } catch {
+      return {
+        error: "Nie można przeliczyć transakcji. Sprawdź ich kwoty i waluty."
+      };
+    }
+  }, [salaries, expenseList, currency, localRates, ratesLoading, ratesError]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -252,50 +205,49 @@ useEffect(() => {
     setExpenses(prev => ({ ...prev, [category]: amount }));
   };
   if (ratesLoading) {
-  return (
-    <div className="dashboard">
-      <p role="status">Pobieranie kursów walut…</p>
-    </div>
-  );
-}
+    return (
+      <div className="dashboard">
+        <p role="status">Pobieranie kursów walut…</p>
+      </div>
+    );
+  }
 
-if (ratesError) {
-  return (
-    <div className="dashboard">
-      <p role="alert">{ratesError}</p>
-      <button type="button" onClick={fetchNBPRates}>
-        Spróbuj ponownie
-      </button>
-    </div>
-  );
-}
-  // --- DANE DO WYKRESÓW (PRZELICZONE) ---
+  if (ratesError) {
+    return (
+      <div className="dashboard">
+        <p role="alert">{ratesError}</p>
+        <button type="button" onClick={fetchNBPRates}>
+          Spróbuj ponownie
+        </button>
+      </div>
+    );
+  }
   if (conversion.error) {
-  return (
-    <div className="dashboard">
-      <p role="alert">{conversion.error}</p>
-    </div>
-  );
-}
+    return (
+      <div className="dashboard">
+        <p role="alert">{conversion.error}</p>
+      </div>
+    );
+  }
   const visibleSalaries = [...conversion.salaries]
-  .sort((a, b) => new Date(a.date) - new Date(b.date))
-  .slice(-10);
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .slice(-10);
   const chartData = {
     labels: visibleSalaries.length > 0 ? visibleSalaries.map(s => new Date(s.date).toLocaleDateString()) : ["No Data"],
     datasets: [{
       label: `Income History (${currency})`,
       data: visibleSalaries.map(s => s.amount),
-      borderColor: "#4caf50", 
-      backgroundColor: "rgba(76, 175, 80, 0.1)", 
+      borderColor: "#4caf50",
+      backgroundColor: "rgba(76, 175, 80, 0.1)",
       borderWidth: 3,
       fill: true, tension: 0.4,
     }],
   };
 
   const aggregatedExpenses = conversion.expenseList.reduce((acc, curr) => {
-  acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
-  return acc;
-}, {});
+    acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
+    return acc;
+  }, {});
 
   const barExpenseData = {
     labels: Object.keys(aggregatedExpenses),
@@ -333,31 +285,31 @@ if (ratesError) {
         <button type="submit" className="button-payout" disabled={isSaving || expired || transactions.loading || !!transactions.error}>Add Payout</button>
       </form>
       {!transactions.loading && !transactions.error && <>
-      <div className="balance-wrapper">
-        <div className="balance-container">
-          <h3>Total Balance 💵</h3>
-          <p
-            className={`balance-amount ${
-              conversion.balance < 0 ? "negative" : "positive"
-            }`}
-          >
-            {currencySymbol} {conversion.balance.toFixed(2)}
-          </p>
+        <div className="balance-wrapper">
+          <div className="balance-container">
+            <h3>Total Balance 💵</h3>
+            <p
+              className={`balance-amount ${
+                conversion.balance < 0 ? "negative" : "positive"
+              }`}
+            >
+              {currencySymbol} {conversion.balance.toFixed(2)}
+            </p>
+          </div>
         </div>
-      </div>
-      <div className="chart-container" style={{height: '300px'}}>
-        <Line data={chartData} options={{ responsive: true, maintainAspectRatio: false }} />
-      </div>
-      
-      <ChartsRow 
-        salaries={conversion.salaries}
-        expenseList={conversion.expenseList}
-        currency={currency} 
-        totalIncome={conversion.totalIncome} 
-        totalExpense={conversion.totalExpense} 
-      />
+        <div className="chart-container" style={{height: '300px'}}>
+          <Line data={chartData} options={{ responsive: true, maintainAspectRatio: false }} />
+        </div>
+
+        <ChartsRow
+          salaries={conversion.salaries}
+          expenseList={conversion.expenseList}
+          currency={currency}
+          totalIncome={conversion.totalIncome}
+          totalExpense={conversion.totalExpense}
+        />
       </>}
-      
+
       <h2 className="outlined-text expense-title">Add Expense</h2>
       <div className="expense-grid">
         {categories.concat(customCategories.filter(category => !categoryExists(category.name, []))).map(({ name, icon }) => (
